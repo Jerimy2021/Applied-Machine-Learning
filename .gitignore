@@ -1,0 +1,12 @@
+# Data: nunca se versiona (ver CLAUDE.md - confidencialidad)
+data/
+*.xlsx
+*.xls
+
+# Entorno / caches de Python
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+
+# SO
+.DS_Store
