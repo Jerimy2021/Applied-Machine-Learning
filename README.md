@@ -88,14 +88,21 @@ docs: documentar diccionario de datos
 
 La data en `data/` proviene de una empresa real y es **confidencial**:
 
-- **Nunca se versiona.** `data/` está completo en `.gitignore` (junto con
-  `*.xlsx` y `*.xls` por si algún archivo cae fuera de esa carpeta).
-- Antes de compartir cualquier salida (notebook, figura, reporte), anonimizar
-  nombres, DNI y legajos (hash o ID sintético).
+- **`data/raw/` y `data/interim/` nunca se versionan**, en ningún formato
+  (`.gitignore` los ignora por completo, más `*.xlsx`/`*.xls` en cualquier
+  carpeta como red de seguridad extra).
+- **Única excepción:** los `.csv` finales y **anonimizados** en
+  `data/processed/` sí se pueden commitear. Ver el flujo completo de
+  limpieza, guardado y anonimización en [CONTRIBUTING.md](CONTRIBUTING.md)
+  antes de subir uno.
+- Antes de compartir cualquier salida (notebook, figura, reporte, `.csv`),
+  anonimizar nombres, DNI y legajos (hash o ID sintético —
+  `clean.anonymize_column`).
 - **Checklist antes de cualquier `git add` / `git push`:**
 
   ```bash
-  git ls-files data/   # debe devolver VACÍO
+  git ls-files data/   # solo debe listar .csv dentro de data/processed/
   ```
 
-  Si este comando devuelve algo, **no hacer push** y avisar al equipo.
+  Si aparece algo de `data/raw/`, `data/interim/`, o un `.xlsx`/`.xls`,
+  **no hacer push** y avisar al equipo.
