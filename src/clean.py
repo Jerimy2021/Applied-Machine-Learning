@@ -12,6 +12,7 @@ documenta primero, y se implementa después como un paso explícito.
 """
 
 import hashlib
+import unicodedata
 
 import pandas as pd
 
@@ -52,6 +53,23 @@ def anonymize_column(df: pd.DataFrame, column: str, salt: str = "") -> pd.DataFr
     return df
 
 
-# TODO: funciones de limpieza específicas (normalización de columnas a
-# snake_case, dtypes, categorías en MAYÚSCULAS, parseo de fecha_evento, etc.)
-# se agregan aquí a medida que se aprueban en reports/diccionario_datos.md.
+def strip_accents(texto: str) -> str:
+    """Quita tildes/diacríticos de un texto (ej. 'Área' -> 'Area')."""
+    return "".join(
+        c for c in unicodedata.normalize("NFKD", texto) if not unicodedata.combining(c)
+    )
+
+
+def normalize_categorical(serie: pd.Series) -> pd.Series:
+    """
+    Normaliza una columna categórica al estándar de CLAUDE.md: sin espacios
+    sobrantes, MAYÚSCULAS, sin tildes, dtype 'category'. Un string vacío
+    tras el strip se trata como nulo (no como una categoría propia).
+    """
+    limpio = (
+        serie.astype("string")
+        .str.strip()
+        .apply(lambda v: strip_accents(v).upper() if pd.notna(v) else v)
+    )
+    limpio = limpio.replace("", pd.NA)
+    return limpio.astype("category")
