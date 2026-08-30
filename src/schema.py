@@ -1,11 +1,16 @@
 """
 Esquema de columnas del proyecto.
 
-Declara cada columna que existe en data/processed/accidentes_2023.csv y
-data/processed/accidentes_2024.csv: su tipo esperado y a qué año(s)
-pertenece. Ver la descripción completa de cada una en
-reports/diccionario_datos.md — este archivo es la versión "para código"
-de esa documentación (ej. para validar un DataFrame antes de usarlo).
+Declara cada columna que existe en cada CSV de data/processed/: su tipo
+esperado y a qué fuente(s) pertenece. Ver la descripción completa de cada
+una en reports/diccionario_datos.md — este archivo es la versión "para
+código" de esa documentación (ej. para validar un DataFrame antes de
+usarlo).
+
+- ESQUEMA_ACCIDENTES: accidentes_2023.csv / accidentes_2024.csv
+- ESQUEMA_HISTORICO: accidentes_historico_2012_2022.csv
+- ESQUEMA_TABLERO_ACCIDENTES: accidentes_2025_2026.csv
+- ESQUEMA_INCIDENTES: incidentes_2025_2026.csv
 """
 
 from dataclasses import dataclass
@@ -72,3 +77,85 @@ ESQUEMA_ACCIDENTES: tuple[Columna, ...] = (
 def columnas_para(anio: str) -> list[str]:
     """Nombres de columna esperados para un año dado ('2023' o '2024')."""
     return [c.nombre for c in ESQUEMA_ACCIDENTES if anio in c.anios]
+
+
+# ---------------------------------------------------------------------------
+# Las 3 fuentes adicionales (ver src/ingest.py) tienen esquemas de columnas
+# muy distintos entre sí y respecto a ESQUEMA_ACCIDENTES, por eso se declaran
+# por separado en vez de forzarlos a la misma tupla. Ver el detalle de cada
+# columna en reports/diccionario_datos.md.
+# ---------------------------------------------------------------------------
+
+ESQUEMA_HISTORICO: tuple[Columna, ...] = (
+    Columna("nro_rom", "str", ("historico",)),
+    Columna("programa", "category", ("historico",)),
+    Columna("lugar", "category", ("historico",)),
+    Columna("area_responsabilidad", "category", ("historico",)),
+    Columna("id_persona", "str", ("historico",)),  # anonimizado
+    Columna("edad_anios", "float64", ("historico",)),
+    Columna("puesto_trabajo", "category", ("historico",)),
+    Columna("sexo", "category", ("historico",)),
+    Columna("turno", "category", ("historico",)),
+    Columna("experiencia_puesto", "object", ("historico",)),
+    Columna("fecha_evento", "datetime64[ns]", ("historico",)),
+    Columna("gravedad", "category", ("historico",)),
+    Columna("descripcion_accidente", "str", ("historico",)),
+    Columna("parte_cuerpo_afectada", "category", ("historico",)),
+    Columna("anio", "int64", ("historico",)),
+    Columna("mes", "category", ("historico",)),
+    Columna("dias_perdidos", "float64", ("historico",)),
+    Columna("cargo_ansi", "category", ("historico",)),
+    Columna("dias_mas_ansi", "float64", ("historico",)),
+    Columna("fuente_peligro", "category", ("historico",)),
+    Columna("actividad_realizada", "category", ("historico",)),
+    Columna("tipo_contacto", "category", ("historico",)),  # 100% nulo, ver diccionario
+    Columna("dano", "category", ("historico",)),
+    Columna("contrata", "category", ("historico",)),
+    Columna("nota_midot", "float64", ("historico",)),
+    Columna("modalidad", "category", ("historico",)),
+    Columna("fuente_archivo", "str", ("historico",)),
+)
+
+ESQUEMA_TABLERO_ACCIDENTES: tuple[Columna, ...] = (
+    Columna("nro_rom", "str", ("2025_2026",)),
+    Columna("sociedad", "category", ("2025_2026",)),
+    Columna("vicepresidencia", "category", ("2025_2026",)),
+    Columna("direccion", "category", ("2025_2026",)),
+    Columna("categoria", "category", ("2025_2026",)),
+    Columna("planta", "category", ("2025_2026",)),
+    Columna("planta_sigma", "category", ("2025_2026",)),
+    Columna("fecha_evento", "datetime64[ns]", ("2025_2026",)),
+    Columna("hora", "object", ("2025_2026",)),
+    Columna("turno", "category", ("2025_2026",)),
+    Columna("dia_semana", "category", ("2025_2026",)),
+    Columna("edad_anios", "float64", ("2025_2026",)),
+    Columna("tiempo_empresa_meses", "float64", ("2025_2026",)),
+    Columna("tiempo_empresa_anios", "float64", ("2025_2026",)),
+    Columna("horas_trabajadas_turno", "float64", ("2025_2026",)),
+    Columna("area", "category", ("2025_2026",)),
+    Columna("empresa", "category", ("2025_2026",)),
+    Columna("tipo_trabajador", "category", ("2025_2026",)),
+    Columna("descripcion_accidente", "str", ("2025_2026",)),
+    Columna("lesion", "category", ("2025_2026",)),
+    Columna("dias_registrables", "int64", ("2025_2026",)),
+    Columna("fuente_peligro", "category", ("2025_2026",)),
+    Columna("causa_basica", "category", ("2025_2026",)),
+    Columna("causa_principal", "category", ("2025_2026",)),
+    Columna("causa_inmediata", "category", ("2025_2026",)),
+    Columna("trimestre", "category", ("2025_2026",)),
+    Columna("es_hard_stop", "boolean", ("2025_2026",)),
+    Columna("id_persona", "str", ("2025_2026",)),  # anonimizado
+    Columna("fuente_archivo", "str", ("2025_2026",)),
+)
+
+ESQUEMA_INCIDENTES: tuple[Columna, ...] = (
+    Columna("planta", "category", ("2025_2026",)),
+    Columna("fecha_evento", "datetime64[ns]", ("2025_2026",)),
+    Columna("empresa", "category", ("2025_2026",)),
+    Columna("tipo_evento", "category", ("2025_2026",)),
+    Columna("descripcion_incidente", "str", ("2025_2026",)),
+    Columna("danos_reales_o_potenciales", "str", ("2025_2026",)),
+    Columna("fuente_peligro", "category", ("2025_2026",)),
+    Columna("es_verificado", "boolean", ("2025_2026",)),
+    Columna("fuente_archivo", "str", ("2025_2026",)),
+)

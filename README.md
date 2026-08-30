@@ -19,6 +19,13 @@ Todavía no se entrena ningún modelo. El foco actual es dejar la data cruda
 correctamente ingerida, documentada y limpia, con todas las decisiones de
 limpieza registradas en `reports/diccionario_datos.md`.
 
+De los 5 archivos de `data/raw/`, 4 ya están procesados y anonimizados en
+`data/processed/` (**1567 accidentes** entre 2012-2026 + **340 incidentes**
+2025-2026); el quinto (`BASE CALCULO INDICADORES 2024.xlsx`) es un archivo de
+indicadores ya agregados, sin registro fila-por-evento. Detalle completo de
+cada fuente, columnas y decisiones de limpieza en
+[reports/diccionario_datos.md](reports/diccionario_datos.md).
+
 ## Estructura de carpetas
 
 ```
