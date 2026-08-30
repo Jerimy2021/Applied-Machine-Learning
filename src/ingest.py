@@ -149,6 +149,11 @@ def _parse_mixed_excel_date(serie: pd.Series) -> pd.Series:
     pd.to_datetime() interpreta un int plano como nanosegundos desde 1970,
     no como fecha de Excel — por eso primero se convierten los números a
     fecha real (época de Excel: 1899-12-30) antes de parsear el resto.
+
+    dayfirst=True porque las fechas en texto libre del Excel original están
+    en formato peruano (DD/MM/AAAA). Algunas celdas están mal escritas (año
+    a 2 dígitos, mes inválido, dígitos de más) — con errors="coerce" esas
+    quedan como NaT en vez de adivinar una fecha.
     """
     def convertir(valor):
         if pd.isna(valor):
@@ -157,7 +162,7 @@ def _parse_mixed_excel_date(serie: pd.Series) -> pd.Series:
             return pd.Timestamp("1899-12-30") + pd.Timedelta(days=valor)
         return valor
 
-    return pd.to_datetime(serie.apply(convertir), errors="coerce")
+    return pd.to_datetime(serie.apply(convertir), errors="coerce", dayfirst=True)
 
 
 def load_base_accidentes(anio: str) -> pd.DataFrame:
@@ -212,4 +217,190 @@ def load_base_accidentes(anio: str) -> pd.DataFrame:
             df[col] = normalize_categorical(df[col])
 
     df["fuente_archivo"] = anio
+    return df.reset_index(drop=True)
+
+
+# --- Carga + limpieza estructural de las 3 fuentes adicionales ---
+#
+# Además de las 2 "Base" (2023/2024), otros 3 archivos de data/raw/ resultaron
+# tener registros fila-por-accidente/incidente y no solo indicadores
+# agregados:
+#   - "Resultados SST 2023 v06final.xlsx" / hoja "HISTORICO ACCIDENTES":
+#     accidentes 2012-2022 (fila por accidente).
+#   - "Tablero de Accidentes e incidentes.xlsx" / hoja "2° Accidentes":
+#     accidentes 2025-2026.
+#   - "Tablero de Accidentes e incidentes.xlsx" / hoja "1° Incidentes":
+#     incidentes (no accidentes) 2025-2026.
+# Cada una tiene su propio esquema de columnas, distinto al de 2023/2024, por
+# eso se guardan como archivos separados en vez de forzar un merge. Decisiones
+# documentadas en reports/diccionario_datos.md.
+
+_RENAME_HISTORICO = {
+    "ROM": "nro_rom", "PROGRAMA": "programa", "LUGAR": "lugar",
+    "AREA RESPONSABILIDAD": "area_responsabilidad", "Edad": "edad_anios",
+    "Puesto de Trabajo": "puesto_trabajo", "SEXO": "sexo", "TURNO": "turno",
+    "Experiencia en el Puesto Trabajo": "experiencia_puesto",
+    "Fecha": "fecha_evento", "GG": "gravedad",
+    "Descripción del Accidente de Trabajo": "descripcion_accidente",
+    "Parte Cuerpo": "parte_cuerpo_afectada", "Año": "anio", "Mes": "mes",
+    "Días Perdidos x Lesión": "dias_perdidos", "Cargo ANSI": "cargo_ansi",
+    "Dias + ansi": "dias_mas_ansi", "FUENTE PELIGRO": "fuente_peligro",
+    "Actividad": "actividad_realizada", "TIPO DE CONTACTO": "tipo_contacto",
+    "DAÑO": "dano", "Contrata": "contrata", "NOTA MIDOT": "nota_midot",
+    "MODALIDAD": "modalidad",
+}
+
+_CATEGORICAL_COLS_HISTORICO = [
+    "programa", "lugar", "area_responsabilidad", "puesto_trabajo", "sexo",
+    "turno", "gravedad", "parte_cuerpo_afectada", "mes", "cargo_ansi",
+    "fuente_peligro", "actividad_realizada", "tipo_contacto", "dano",
+    "contrata", "modalidad",
+]
+
+_COLUMNAS_NUMERICAS_HISTORICO = ["edad_anios", "dias_perdidos", "dias_mas_ansi", "nota_midot"]
+
+_RENAME_TABLERO_ACCIDENTES = {
+    "N° de ROM": "nro_rom", "SOCIEDAD2": "sociedad", "VP": "vicepresidencia",
+    "DIRECCIÓN": "direccion", "CATEGORÍA": "categoria",
+    "PLANTA DE OCURRENCIA": "planta", "PLANTA SIGMA": "planta_sigma",
+    "FECHA": "fecha_evento", "HORA DE OCURRENCIA": "hora", "TURNO": "turno",
+    "DIA DE SEMANA": "dia_semana", "EDAD DEL ACCIDENTADO": "edad_anios",
+    "TIEMPO EN LA EMPRESA (meses)": "tiempo_empresa_meses",
+    "TIEMPO EN LA EMPRESA (años)": "tiempo_empresa_anios",
+    "CANTIDAD DE HORAS TRABAJADAS EN EL TURNO": "horas_trabajadas_turno",
+    "ÁREA DEL ACCIDENTADO": "area", "EMPRESA": "empresa",
+    "Tipo de Trabajador": "tipo_trabajador", "DESCRIPCIÓN": "descripcion_accidente",
+    "LESIÓN": "lesion", "DÍAS REGISTRABLES": "dias_registrables",
+    "FUENTE DE PELIGRO": "fuente_peligro",
+    "CAUSA BASICA (SEGÚN SCAT)": "causa_basica", "CAUSA PRINCIPAL": "causa_principal",
+    "CAUSA INMEDIATA": "causa_inmediata", "TRIMESTRE": "trimestre",
+    "¿Se realizó\n el Hard Stop?": "es_hard_stop",
+}
+
+_CATEGORICAL_COLS_TABLERO_ACCIDENTES = [
+    "sociedad", "vicepresidencia", "direccion", "categoria", "planta",
+    "planta_sigma", "turno", "dia_semana", "area", "empresa",
+    "tipo_trabajador", "lesion", "fuente_peligro", "causa_basica",
+    "causa_principal", "causa_inmediata", "trimestre",
+]
+
+# Columnas descartadas de "2° Accidentes": contadores/artefactos de Excel
+# (Unnamed, T1/T2, "DIAS SEGUROS") o preguntas de seguimiento con códigos
+# mixtos (no SI/NO limpio) que no se pudieron interpretar con confianza —
+# ver bitácora en reports/diccionario_datos.md.
+_DROP_COLS_TABLERO_ACCIDENTES = [
+    "Unnamed: 0", "DIAS SEGUROS", "Turno", "Unnamed: 32", "T1", "T1.1", "T2", "T2.1",
+    "¿La Investigación está  cerrada?", "¿Tiene\n ROM?",
+    "¿Se difundieron\n las lecciones aprendidas?", "¿Se difundió en el espacio diario?",
+    "Unnamed: 42", "Unnamed: 43",
+]
+
+_RENAME_INCIDENTES = {
+    "Planta": "planta", "Fecha": "fecha_evento", "EMPRESA": "empresa",
+    "Tipo de evento": "tipo_evento", "Descripción": "descripcion_incidente",
+    "Daños reales o potenciales": "danos_reales_o_potenciales",
+    "Fuente de peligro": "fuente_peligro", "verificado": "es_verificado",
+}
+
+_CATEGORICAL_COLS_INCIDENTES = ["planta", "empresa", "tipo_evento", "fuente_peligro"]
+
+
+def load_historico_accidentes() -> pd.DataFrame:
+    """
+    Carga y limpia la hoja "HISTORICO ACCIDENTES" de
+    "Resultados SST 2023 v06final.xlsx": accidentes de 2012 a 2022, un
+    accidente por fila.
+
+    Se excluye 2023 en adelante para no duplicar los registros que ya vienen
+    de `load_base_accidentes("2023")` / ("2024"). Algunas fechas del Excel
+    original están mal escritas (año a 2 dígitos, mes inválido, etc.) — se
+    convierten a `NaT` (`errors="coerce"` dentro de `_parse_mixed_excel_date`),
+    no se intenta adivinar la fecha real. Ver reports/diccionario_datos.md.
+    """
+    raw = load_raw("Resultados SST 2023 v06final.xlsx", sheet_name="HISTORICO ACCIDENTES")
+    raw.columns = raw.columns.str.strip()
+    df = raw.rename(columns=_RENAME_HISTORICO)
+
+    # Nunca se guarda el nombre real: se reemplaza por un id sintético.
+    df = anonymize_column(df, "NOMBRE", salt="sst-alicorp")
+    df = df.rename(columns={"NOMBRE": "id_persona"})
+
+    df["fecha_evento"] = _parse_mixed_excel_date(df["fecha_evento"])
+    for col in _COLUMNAS_NUMERICAS_HISTORICO:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    for col in _CATEGORICAL_COLS_HISTORICO:
+        df[col] = normalize_categorical(df[col])
+
+    df["fuente_archivo"] = "historico_2012_2022"
+    df = df[df["anio"] < 2023].reset_index(drop=True)
+    return df
+
+
+def load_accidentes_tablero() -> pd.DataFrame:
+    """
+    Carga y limpia la hoja "2° Accidentes" de
+    "Tablero de Accidentes e incidentes.xlsx": accidentes 2025-2026, un
+    accidente por fila.
+
+    El encabezado real está en la fila 2 del Excel (`header=1`). Apellidos +
+    nombre + DNI (todo PII) se combinan y se reemplazan por `id_persona`
+    antes de descartar esas 3 columnas.
+    """
+    raw = load_raw(
+        "Tablero de Accidentes e incidentes.xlsx", sheet_name="2° Accidentes", header=1
+    )
+    raw.columns = raw.columns.str.strip()
+    raw = raw.dropna(how="all").reset_index(drop=True)
+    raw = raw.drop(columns=[c for c in _DROP_COLS_TABLERO_ACCIDENTES if c in raw.columns])
+
+    dni_texto = raw["DNI"].apply(lambda v: "" if pd.isna(v) else str(int(v)))
+    nombre_completo = (
+        raw["APELLIDOS DEL ACCIENTADO"].astype("string").fillna("")
+        + "|" + raw["NOMBRE DEL ACCIDENTADO"].astype("string").fillna("")
+        + "|" + dni_texto
+    )
+    raw = raw.drop(columns=["APELLIDOS DEL ACCIENTADO", "NOMBRE DEL ACCIDENTADO", "DNI"])
+
+    df = raw.rename(columns=_RENAME_TABLERO_ACCIDENTES)
+    tmp = anonymize_column(
+        pd.DataFrame({"nombre_completo": nombre_completo}), "nombre_completo", salt="sst-alicorp"
+    )
+    df["id_persona"] = tmp["nombre_completo"]
+
+    df["fecha_evento"] = pd.to_datetime(df["fecha_evento"], errors="coerce")
+    df["es_hard_stop"] = (
+        df["es_hard_stop"].astype("string").str.strip().str.upper().map(_BOOL_MAP)
+    )
+    for col in _CATEGORICAL_COLS_TABLERO_ACCIDENTES:
+        if col in df.columns:
+            df[col] = normalize_categorical(df[col])
+
+    df["fuente_archivo"] = "tablero_2025_2026"
+    return df.reset_index(drop=True)
+
+
+def load_incidentes() -> pd.DataFrame:
+    """
+    Carga y limpia la hoja "1° Incidentes" de
+    "Tablero de Accidentes e incidentes.xlsx": incidentes (no accidentes)
+    2025-2026, un incidente por fila.
+
+    A diferencia de las demás fuentes, esta hoja no trae nombre/apellido/DNI
+    de ninguna persona — no requiere anonimización.
+    """
+    raw = load_raw(
+        "Tablero de Accidentes e incidentes.xlsx", sheet_name="1° Incidentes ", header=1
+    )
+    raw.columns = raw.columns.str.strip()
+    raw = raw.dropna(how="all").reset_index(drop=True)
+    df = raw.rename(columns=_RENAME_INCIDENTES)
+
+    df["fecha_evento"] = pd.to_datetime(df["fecha_evento"], errors="coerce")
+    df["es_verificado"] = (
+        df["es_verificado"].astype("string").str.strip().str.upper().map(_BOOL_MAP)
+    )
+    for col in _CATEGORICAL_COLS_INCIDENTES:
+        df[col] = normalize_categorical(df[col])
+
+    df["fuente_archivo"] = "tablero_2025_2026"
     return df.reset_index(drop=True)
