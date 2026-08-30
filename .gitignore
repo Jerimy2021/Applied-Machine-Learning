@@ -1,7 +1,7 @@
 # Data: por defecto NUNCA se versiona (ver CLAUDE.md - confidencialidad).
 # Unica excepcion: CSV finales y anonimizados en data/processed/
 # (ver flujo en CONTRIBUTING.md antes de commitear uno).
-#data/*
+data/*
 !data/processed/
 data/processed/*
 !data/processed/*.csv
