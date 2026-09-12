@@ -12,6 +12,7 @@ documenta primero, y se implementa después como un paso explícito.
 """
 
 import hashlib
+import re
 import unicodedata
 
 import pandas as pd
@@ -73,6 +74,41 @@ def normalize_categorical(serie: pd.Series) -> pd.Series:
     )
     limpio = limpio.replace("", pd.NA)
     return limpio.astype("category")
+
+
+_PATRON_ID_ETIQUETADO = re.compile(r"\b(DNI|RUC)\b[\s:.\-]*\d{6,11}", re.IGNORECASE)
+_PATRON_NOMBRE_PROPIO = re.compile(
+    r"\b[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+){1,3}\b"
+)
+
+
+def redact_pii_libre(serie: pd.Series) -> pd.Series:
+    """
+    Enmascara, en una columna de texto libre (ej. `descripcion_accidente`),
+    dos patrones que probablemente son datos personales:
+      - DNI/RUC etiquetados explícitamente (ej. "DNI 09065660") -> "[DNI]"/"[RUC]"
+      - Secuencias de 2 a 4 palabras en Título-Caso (candidato a nombre
+        propio, ej. "Ysmael Pinares Vargas") -> "[NOMBRE]"
+
+    **Es una heurística de primera pasada, no un NER validado** (ver
+    reports/diccionario_datos.md):
+      - Puede enmascarar nombres de lugar/clínica/empresa que también están
+        en Título-Caso (falso positivo, ej. "Molino Santa Rosa"). Se
+        prioriza no dejar pasar un nombre de persona sobre preservar esos
+        términos.
+      - Puede no detectar un nombre que no siga el patrón esperado (una sola
+        palabra, todo minúsculas, etc. — falso negativo).
+    No reemplaza una revisión humana antes de compartir esta columna fuera
+    del equipo.
+    """
+    def _enmascarar(valor):
+        if pd.isna(valor):
+            return valor
+        texto = _PATRON_ID_ETIQUETADO.sub(lambda m: f"[{m.group(1).upper()}]", str(valor))
+        texto = _PATRON_NOMBRE_PROPIO.sub("[NOMBRE]", texto)
+        return texto
+
+    return serie.apply(_enmascarar)
 
 
 _MAPA_TURNO = {

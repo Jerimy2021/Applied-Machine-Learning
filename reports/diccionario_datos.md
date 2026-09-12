@@ -227,6 +227,8 @@ excluirlas de cualquier futuro dataset de modelado por baja cobertura.
 | 2026-09-12 | `turno` (fila 920) y `experiencia_puesto` (filas 12 y 36) de `HISTORICO ACCIDENTES` | Celda puesta en `NA`, resto de la fila conservado | Las 3 celdas traían el mismo texto que `GG` (gravedad) de su propia fila (ej. `"Accidente Incapacitante"`) — una celda mal pegada, no un valor propio de esa columna. Se verificó fila por fila que **no** es un corrimiento de columnas: el resto de cada fila (fecha, parte del cuerpo, año, mes, días perdidos, fuente de peligro, actividad) tiene valores normales para su propia columna. Se corrige solo la celda puntual, no se toca nada más de la fila | Equipo, confirmado con inspección fila por fila |
 | 2026-09-12 | `turno` de `HISTORICO ACCIDENTES` | Sinónimos agrupados con `clean.normalize_turno()`: `1RO`/`1`/`1ERO`/`1ER`/`1ER TURNO`→`TURNO_1`; `2DO`/`2`/`2NDO`/`2DO TURNO`/`2RO`→`TURNO_2`; `3RO`/`3`/`3ER`→`TURNO_3`; `MANANA`→`DIA`; `MADRUGADA`/`MEDIA NOCHE`→`NOCHE`. `DIA`/`TARDE`/`NOCHE` sin cambio | De 21 categorías (20 valores + `NaN`) a 7 (`TURNO_1`, `TURNO_2`, `TURNO_3`, `DIA`, `TARDE`, `NOCHE`, `NaN`). **No se unificó** el esquema numerado con el de franja horaria (ej. no se asumió turno 1 = DIA) porque sería inventar una equivalencia de negocio no verificable | Equipo, aprobado explícitamente tras revisar las 21 categorías con su conteo |
 | 2026-09-12 | `turno` de `HISTORICO ACCIDENTES`, 32 filas con `"-"` | Recodificado a `NA` dentro de `normalize_turno()` | Mismo criterio ya aplicado en `sexo`/`gravedad`: `"-"` es un marcador de "no reportado", no una categoría informativa | Equipo, confirmado explícitamente |
+| 2026-09-12 | `area_responsabilidad`/`contrata` de `HISTORICO ACCIDENTES`, 8 celdas | Puestas en `NA` | Auditoría de PII: nombre completo de una persona (1 caso con RUC) filtrado por error hacia una columna que no es de identidad — ver sección "Auditoría de PII" | Equipo, a raíz de auditoría explícita solicitada |
+| 2026-09-12 | `descripcion_accidente` (4 fuentes) y `descripcion_incidente`/`danos_reales_o_potenciales` (incidentes) | Redactadas con `clean.redact_pii_libre()` | Auditoría de PII encontró nombres de personas y un DNI explícito en hasta 40.6% de las filas de algún archivo — ver sección "Auditoría de PII" para el detalle y limitaciones de la heurística | Equipo, a raíz de auditoría explícita solicitada |
 
 ## Anonimización
 
@@ -242,12 +244,45 @@ producirá el mismo `id_persona` — permite cruzar accidentes de una persona
 entre fuentes sin exponer su identidad. La hoja `1° Incidentes` no tiene
 `id_persona` porque no trae ningún dato de identidad de personas.
 
-**⚠️ Pendiente de revisión:** `descripcion_accidente` (en las 3 fuentes que la
-tienen: 2023, 2024 y `accidentes_2025_2026.csv`) y `descripcion_incidente` /
-`danos_reales_o_potenciales` (en `incidentes_2025_2026.csv`) son texto libre
-escrito por la persona que reportó el evento. No se aplicó ninguna
-anonimización sobre estos campos — es posible que algunas descripciones
-mencionen nombres de personas dentro del texto. **Antes de compartir estos
-campos fuera del equipo** (ej. en una presentación, un notebook exportado a PDF, etc.), alguien
-debe revisar manualmente una muestra o correr una limpieza de texto adicional.
-No se resolvió en esta pasada por el tiempo que toma hacerlo bien.
+## Auditoría de PII (2026-09-12) y redacción de texto libre
+
+**Hallazgo:** una auditoría completa de las 5 fuentes procesadas encontró PII
+real sin anonimizar en dos lugares que no eran columnas de identidad:
+
+1. **`area_responsabilidad` y `contrata`** de `accidentes_historico_2012_2022.csv`:
+   8 celdas con nombre completo de una persona (en un caso junto a su RUC),
+   filtrado por error hacia una columna que no pasa por `anonymize_column()`.
+2. **`descripcion_accidente`** (accidentes_2023/2024/historico/2025_2026) y
+   **`descripcion_incidente`** (incidentes_2025_2026): texto libre con
+   nombres de trabajadores, supervisores, choferes e incluso un DNI
+   explícito, mencionados dentro de la narración del evento — hasta 40.6%
+   de las filas en algún archivo.
+
+**Corrección aplicada:**
+
+- Las 8 celdas puntuales de `area_responsabilidad`/`contrata` se pusieron en
+  `NA` en `src/ingest.py` (`_CELDAS_PII_HISTORICO`), mismo criterio que las
+  celdas mal pegadas ya documentadas arriba.
+- Se creó `clean.redact_pii_libre()`, aplicada a `descripcion_accidente` (en
+  las 4 fuentes que la tienen) y a `descripcion_incidente` /
+  `danos_reales_o_potenciales` (en incidentes): reemplaza DNI/RUC
+  etiquetados por `[DNI]`/`[RUC]`, y secuencias de 2-4 palabras en
+  Título-Caso por `[NOMBRE]`.
+
+**⚠️ Limitación explícita — es una heurística, no un NER validado:**
+
+- Puede enmascarar nombres de lugar/clínica/empresa que también están en
+  Título-Caso (falso positivo, ej. "Molino Santa Rosa" → `[NOMBRE]`). Se
+  prioriza no dejar pasar un nombre de persona sobre preservar esos
+  términos — el texto queda menos legible pero más seguro.
+- Puede no detectar un nombre que no siga el patrón esperado: una sola
+  palabra suelta después de un nombre de 4 palabras ya enmascarado (ej.
+  "[NOMBRE] Jhon"), o nombres en minúscula.
+- Verificado tras aplicarla: 0 coincidencias reales de nombre/DNI/RUC
+  residuales en los 5 CSV (los únicos "positivos" del re-chequeo fueron 3
+  falsos positivos benignos: ceros de un timestamp, un nombre de
+  laboratorio, y un número de viaje interno — ninguno es PII).
+- **Sigue pendiente una revisión humana** de una muestra antes de compartir
+  estas columnas fuera del equipo (ej. en una presentación o un PDF
+  exportado) — esta redacción automática reduce el riesgo, no lo elimina
+  por completo.
