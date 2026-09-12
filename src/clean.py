@@ -73,3 +73,37 @@ def normalize_categorical(serie: pd.Series) -> pd.Series:
     )
     limpio = limpio.replace("", pd.NA)
     return limpio.astype("category")
+
+
+def derive_es_incapacitante(gravedad: pd.Series) -> pd.Series:
+    """
+    Deriva la etiqueta booleana `es_incapacitante` a partir de la columna
+    `gravedad` de `accidentes_historico_2012_2022.csv` (única fuente que la
+    trae). Reglas acordadas con el equipo (ver reports/diccionario_datos.md,
+    sección "Variable objetivo"):
+
+      - Contiene "INCAPACITANTE" sin "NO " inmediatamente antes -> True
+      - Contiene "NO INCAPACITANTE" -> False
+      - Contiene "INCIDENTE" (incluida la variante mal escrita "INCICENTE")
+        -> False
+      - Cualquier otro valor (incl. "-", nulo, y los 2 casos pendientes de
+        revisión caso a caso "ACCIDENTE FUERA DEL TRABAJO" y
+        "DAÑO A LA SALUD") -> `pd.NA`. No se imputa ni se adivina.
+
+    Espera `gravedad` ya normalizada por `normalize_categorical` (mayúsculas,
+    sin tildes) — igual funciona si no lo está, salvo por tildes.
+    """
+    def _clasificar(valor):
+        if pd.isna(valor):
+            return pd.NA
+        # Colapsa espacios múltiples (el dato original trae, ej., "DANO   A LA SULUD").
+        texto = " ".join(str(valor).split())
+        if "NO INCAPACITANTE" in texto:
+            return False
+        if "INCAPACITANTE" in texto:
+            return True
+        if "INCIDENTE" in texto or "INCICENTE" in texto:
+            return False
+        return pd.NA
+
+    return gravedad.apply(_clasificar).astype("boolean")

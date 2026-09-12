@@ -146,6 +146,31 @@ limpieza; el resto son análogas a sus contrapartes de `accidentes_2023/2024`.
 | `tipo_evento` | Categórica: mayoría `INCIDENTE` (201), `ALTO POTENCIAL` (82), `DANO MATERIAL` (44); el resto son ~10 categorías con 1-2 casos cada una (ej. `FUGA DE CLORO`, `AMAGO DE INCENDIO`), incluyendo una variante mal escrita (`INDICENTE`, 1 caso) no unificada con `INCIDENTE`. Sin nulos. |
 | `es_verificado` | Booleano `SI`/`NO` del Excel original; 96% nulo (la mayoría de incidentes no tenían este campo llenado). |
 
+## Variable objetivo: `es_incapacitante`
+
+Booleana (`boolean` nullable), derivada de `gravedad` en
+`accidentes_historico_2012_2022.csv` por `clean.derive_es_incapacitante()`
+(única fuente con `gravedad`; las demás 4 fuentes no tienen esta columna, por
+lo tanto no aportan y para este target). Reglas acordadas con el equipo:
+
+| Regla sobre `gravedad` | Resultado |
+|---|---|
+| Contiene "INCAPACITANTE" sin "NO " inmediatamente antes | `True` |
+| Contiene "NO INCAPACITANTE" | `False` |
+| Contiene "INCIDENTE" (incl. variante mal escrita "INCICENTE") | `False` |
+| Cualquier otro valor: `"-"`, nulo, "ACCIDENTE FUERA DEL TRABAJO", "DAÑO A LA SALUD" (2 casos pendientes de revisión manual) | `pd.NA` — no se imputa ni se adivina |
+
+Resultado sobre las 1028 filas: 861 `True`, 155 `False`, 12 `<NA>`
+(verificado corriendo la función). Las filas con `<NA>` deben excluirse de
+entrenamiento/evaluación, no imputarse. Sobre las 1016 filas con etiqueta
+definida (excluyendo los 12 `<NA>`): **861 `True` (84.74%) / 155 `False`
+(15.26%)** — el desbalance ~85/15 a tratar explícitamente en el modelo.
+
+**Por qué no se usó `gravedad` cruda ni `dias_perdidos > 0` como target:**
+`gravedad` tiene 15 categorías (varias con 0-4 casos y errores de tipeo,
+ver arriba) — no es entrenable así. `dias_perdidos > 0` da un desbalance
+peor (93.3% / 6.7% sobre las filas no nulas) y además tiene 11.1% de nulos.
+
 ## Nulos detectados
 
 **No se imputó ningún nulo en esta pasada** — quedan como `NaN`/`NaT` en
