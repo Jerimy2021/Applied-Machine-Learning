@@ -155,25 +155,64 @@ Las 5 fuentes de `data/raw/` ya fueron auditadas; 4 están procesadas y
 anonimizadas en `data/processed/` (1567 accidentes + 340 incidentes en
 total, entre las 4 fuentes de accidentes/incidentes). El problema, el target
 (`es_incapacitante`) y las X candidatas ya están definidos con el equipo
-(secciones 1-5).
+(secciones 1-5), la derivación de `es_incapacitante` y el agrupamiento de
+`turno` ya están implementados (`src/clean.py`), y el EDA dirigido
+(`02_eda_dirigido.ipynb`, 6 preguntas con figuras en `reports/figures/`) ya
+corre de punta a punta — ver también la sección de Incidente de PII arriba.
+
+**Hecho en este hito:**
+
+- [x] Derivación de `es_incapacitante` en `src/clean.py`
+      (`derive_es_incapacitante`), documentada en el diccionario.
+- [x] Sinónimos de `turno` agrupados (`normalize_turno()`), aprobado por el
+      equipo.
+- [x] `es_considerado`/`es_recategorizado`/`es_hard_stop`/`es_verificado`
+      retipadas a `boolean` nullable, alineadas con `schema.py`.
+- [x] EDA dirigido con Pearson + Cramér's V + tasas de incapacitante,
+      6 preguntas con figuras — celdas de hallazgo dejadas en blanco a
+      propósito para que el equipo interprete.
+- [x] Auditoría e incidente de PII detectado y corregido (ver sección
+      arriba).
+- [x] Notebooks re-ejecutados de punta a punta, `Pendiente` desactualizado
+      corregido, columnas no documentadas completadas en el diccionario.
 
 **Pendiente:**
 
-- [ ] Implementar la derivación de `es_incapacitante` en `src/clean.py` y
-      documentarla en `reports/diccionario_datos.md`.
+- [ ] Completar las 6 celdas `### Hallazgo` de `02_eda_dirigido.ipynb` con
+      la lectura del equipo (el notebook calcula, no interpreta).
 - [ ] Decidir el caso a caso de las 2 filas con gravedad "DAÑO A LA SALUD" /
       "ACCIDENTE FUERA DEL TRABAJO".
 - [ ] Normalizar `experiencia_puesto` (texto libre, unidades mezcladas) para
       poder usarla como X numérica en una fase futura — no en esta.
-- [ ] Agrupar sinónimos de `turno` (`normalize_turno()` en `src/clean.py`,
-      mapeo pendiente de aprobación del equipo).
-- [ ] Calcular la matriz de correlación (Pearson + Cramér's V, ver sección 7)
-      y actualizar el EDA con hallazgos evaluados contra `es_incapacitante`
-      — tarea de equipo, repartida aparte.
-- [ ] Sincronizar el texto de los notebooks con el código una vez se apruebe
-      la lista de inconsistencias encontradas en la auditoría.
+- [ ] `lugar`, `fuente_peligro`, `puesto_trabajo` necesitan una regla de
+      agrupación por criterio de dominio (alta cardinalidad) antes de
+      usarse con confianza en un modelo.
+- [ ] Revisión humana de una muestra del texto libre redactado
+      (`descripcion_accidente`/`descripcion_incidente`) antes de compartirlo
+      fuera del equipo — la redacción automática es una heurística, no un
+      NER validado.
+- [ ] Decidir si hace falta reescribir el historial de git por el incidente
+      de PII (ver sección arriba) — decisión del equipo, no tomada
+      unilateralmente.
 - [ ] `BASE CALCULO INDICADORES 2024.xlsx` sigue sin procesar (indicadores
       agregados, no aporta filas nuevas).
+
+## ⚠️ Incidente de PII (2026-09-12)
+
+Al construir el EDA dirigido se encontró PII real sin anonimizar en la data
+ya commiteada: 8 celdas con nombre completo de una persona (una con RUC) en
+`area_responsabilidad`/`contrata` de `accidentes_historico_2012_2022.csv`, y
+nombres de personas (más un DNI explícito) dentro del texto libre de
+`descripcion_accidente`/`descripcion_incidente` de las 5 fuentes — hasta
+40.6% de filas en algún archivo. Se detectó con un barrido programático
+(patrones de DNI/RUC + revisión de categorías + heurística de nombre propio
+en texto libre) y se corrigió: las 8 celdas puntuales se pusieron en `NA`, y
+se creó `clean.redact_pii_libre()` para enmascarar nombres/DNI/RUC en las
+columnas de texto libre. **Esto corrige el estado final de los archivos, no
+el historial de git** — la decisión de si hace falta reescribir el
+historial queda pendiente para el equipo. Detalle completo (qué se encontró,
+cómo se detectó, cómo se remedió, y las limitaciones de la heurística) en
+[reports/diccionario_datos.md](reports/diccionario_datos.md#incidente-de-pii-2026-09-12).
 
 ## Estructura de carpetas
 

@@ -244,10 +244,12 @@ producirá el mismo `id_persona` — permite cruzar accidentes de una persona
 entre fuentes sin exponer su identidad. La hoja `1° Incidentes` no tiene
 `id_persona` porque no trae ningún dato de identidad de personas.
 
-## Auditoría de PII (2026-09-12) y redacción de texto libre
+## Incidente de PII (2026-09-12)
 
-**Hallazgo:** una auditoría completa de las 5 fuentes procesadas encontró PII
-real sin anonimizar en dos lugares que no eran columnas de identidad:
+### Qué se encontró
+
+Una auditoría completa de las 5 fuentes procesadas encontró PII real sin
+anonimizar en dos lugares que no eran columnas de identidad:
 
 1. **`area_responsabilidad` y `contrata`** de `accidentes_historico_2012_2022.csv`:
    8 celdas con nombre completo de una persona (en un caso junto a su RUC),
@@ -258,7 +260,35 @@ real sin anonimizar en dos lugares que no eran columnas de identidad:
    explícito, mencionados dentro de la narración del evento — hasta 40.6%
    de las filas en algún archivo.
 
-**Corrección aplicada:**
+Esta data ya estaba commiteada y pusheada a `develop` desde antes de esta
+auditoría (fuentes agregadas en el PR #4), es decir, el incidente no fue
+introducido por el trabajo de este hito — se descubrió al construir el EDA
+dirigido (`02_eda_dirigido.ipynb`), al revisar el detalle de la columna
+`area_responsabilidad` en una tabla de contingencia.
+
+### Cómo se detectó
+
+Barrido programático sobre las 5 fuentes procesadas, sin corregir nada hasta
+confirmar el alcance completo:
+1. Búsqueda de patrones de 8 dígitos (DNI) y 10-11 dígitos (RUC), literal y
+   junto a las palabras "DNI"/"RUC", en todas las columnas de texto.
+2. Revisión de las categorías de cada columna categórica (finitas, se pueden
+   inspeccionar a mano) buscando valores con estructura de nombre propio.
+3. Heurística de texto libre: secuencias de 2 a 4 palabras en Título-Caso en
+   `descripcion_accidente`/`descripcion_incidente`/`danos_reales_o_potenciales`,
+   con clasificación manual de cuáles son nombres reales vs. falsos positivos
+   (lugares, clínicas, empresas).
+
+### Cómo se remedió
+
+- Las 8 celdas puntuales de `area_responsabilidad`/`contrata` se pusieron en
+  `NA` en `src/ingest.py` (`_CELDAS_PII_HISTORICO`), mismo criterio que las
+  celdas mal pegadas ya documentadas arriba.
+- Se creó `clean.redact_pii_libre()`, aplicada a `descripcion_accidente` (en
+  las 4 fuentes que la tienen) y a `descripcion_incidente` /
+  `danos_reales_o_potenciales` (en incidentes): reemplaza DNI/RUC
+  etiquetados por `[DNI]`/`[RUC]`, y secuencias de 2-4 palabras en
+  Título-Caso por `[NOMBRE]`.
 
 - Las 8 celdas puntuales de `area_responsabilidad`/`contrata` se pusieron en
   `NA` en `src/ingest.py` (`_CELDAS_PII_HISTORICO`), mismo criterio que las
