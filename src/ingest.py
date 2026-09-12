@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.clean import anonymize_column, normalize_categorical
+from src.clean import anonymize_column, normalize_categorical, normalize_turno
 from src.config import INTERIM_DIR, PROCESSED_DIR, RAW_DIR
 
 
@@ -349,6 +349,7 @@ def load_historico_accidentes() -> pd.DataFrame:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     for col in _CATEGORICAL_COLS_HISTORICO:
         df[col] = normalize_categorical(df[col])
+    df["turno"] = normalize_turno(df["turno"])
 
     df["fuente_archivo"] = "historico_2012_2022"
     df = df[df["anio"] < 2023].reset_index(drop=True)

@@ -75,6 +75,46 @@ def normalize_categorical(serie: pd.Series) -> pd.Series:
     return limpio.astype("category")
 
 
+_MAPA_TURNO = {
+    # Sinónimos de turno numerado (mismo esquema, distinta redacción).
+    "1RO": "TURNO_1", "1": "TURNO_1", "1ERO": "TURNO_1", "1ER": "TURNO_1",
+    "1ER TURNO": "TURNO_1",
+    "2DO": "TURNO_2", "2": "TURNO_2", "2NDO": "TURNO_2", "2DO TURNO": "TURNO_2",
+    "2RO": "TURNO_2",
+    "3RO": "TURNO_3", "3": "TURNO_3", "3ER": "TURNO_3",
+    # Sinónimos dentro de la misma franja horaria (no del esquema numerado).
+    "MANANA": "DIA",
+    "MADRUGADA": "NOCHE", "MEDIA NOCHE": "NOCHE",
+    # Marcador de "no reportado", mismo criterio que en sexo/gravedad.
+    "-": pd.NA,
+}
+
+
+def normalize_turno(serie: pd.Series) -> pd.Series:
+    """
+    Agrupa los sinónimos de la columna `turno` de
+    `accidentes_historico_2012_2022.csv` en 6 categorías finales: `TURNO_1`,
+    `TURNO_2`, `TURNO_3` (turno numerado — ej. "1RO"/"1ER"/"1ER TURNO" son la
+    misma cosa escrita distinto) y `DIA`, `TARDE`, `NOCHE` (franja horaria —
+    "MANANA" se une a `DIA`; "MADRUGADA"/"MEDIA NOCHE" se unen a `NOCHE`).
+
+    **Decisión explícita del equipo**: NO se asume que un turno numerado
+    corresponda a una franja horaria (ej. turno 1 = DIA) — sería inventar una
+    equivalencia de negocio no verificable con la data disponible, así que
+    ambos esquemas quedan como categorías separadas. `"-"` se trata como
+    nulo (mismo criterio que en `sexo`/`gravedad`). Ver
+    reports/diccionario_datos.md.
+
+    Espera una serie ya pasada por `normalize_categorical` (mayúsculas, sin
+    tildes). Cualquier valor no reconocido en el mapeo (incluido `NaN`) se
+    deja tal cual, no se descarta silenciosamente.
+    """
+    limpio = serie.astype("string").map(
+        lambda v: _MAPA_TURNO.get(v, v) if pd.notna(v) else v
+    )
+    return limpio.astype("category")
+
+
 def derive_es_incapacitante(gravedad: pd.Series) -> pd.Series:
     """
     Deriva la etiqueta booleana `es_incapacitante` a partir de la columna
