@@ -158,7 +158,13 @@ lo tanto no aportan y para este target). Reglas acordadas con el equipo:
 | Contiene "INCAPACITANTE" sin "NO " inmediatamente antes | `True` |
 | Contiene "NO INCAPACITANTE" | `False` |
 | Contiene "INCIDENTE" (incl. variante mal escrita "INCICENTE") | `False` |
-| Cualquier otro valor: `"-"`, nulo, "ACCIDENTE FUERA DEL TRABAJO", "DAÑO A LA SALUD" (2 casos pendientes de revisión manual) | `pd.NA` — no se imputa ni se adivina |
+| Cualquier otro valor: `"-"`, nulo, "ACCIDENTE FUERA DEL TRABAJO", "DAÑO A LA SALUD" | `pd.NA` — no se imputa ni se adivina |
+
+**Decisión confirmada (2026-09-12):** los 2 casos "ACCIDENTE FUERA DEL
+TRABAJO" y "DAÑO A LA SALUD" se quedan en `pd.NA` (excluidos de
+entrenamiento/evaluación) — no se reclasifican a `True`/`False` ni se
+eliminan las filas del dataset. Ya no es un pendiente, es el comportamiento
+final de `derive_es_incapacitante()`.
 
 Resultado sobre las 1028 filas: 861 `True`, 155 `False`, 12 `<NA>`
 (verificado corriendo la función). Las filas con `<NA>` deben excluirse de

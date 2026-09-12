@@ -175,15 +175,17 @@ corre de punta a punta — ver también la sección de Incidente de PII arriba.
       arriba).
 - [x] Notebooks re-ejecutados de punta a punta, `Pendiente` desactualizado
       corregido, columnas no documentadas completadas en el diccionario.
+- [x] Decisión confirmada sobre las 2 filas de `gravedad` ambiguas ("DAÑO A
+      LA SALUD" / "ACCIDENTE FUERA DEL TRABAJO"): quedan en `NA`, excluidas
+      de entrenamiento/evaluación — no se reclasifican ni se eliminan filas.
 
 **Pendiente:**
 
 - [ ] Completar las 6 celdas `### Hallazgo` de `02_eda_dirigido.ipynb` con
       la lectura del equipo (el notebook calcula, no interpreta).
-- [ ] Decidir el caso a caso de las 2 filas con gravedad "DAÑO A LA SALUD" /
-      "ACCIDENTE FUERA DEL TRABAJO".
-- [ ] Normalizar `experiencia_puesto` (texto libre, unidades mezcladas) para
-      poder usarla como X numérica en una fase futura — no en esta.
+- [ ] `experiencia_puesto` queda fuera de X en esta fase (texto libre,
+      unidades mezcladas) — normalizarla para usarla como X numérica es una
+      fase futura, no de este hito.
 - [ ] `lugar`, `fuente_peligro`, `puesto_trabajo` necesitan una regla de
       agrupación por criterio de dominio (alta cardinalidad) antes de
       usarse con confianza en un modelo.
@@ -194,8 +196,10 @@ corre de punta a punta — ver también la sección de Incidente de PII arriba.
 - [ ] Decidir si hace falta reescribir el historial de git por el incidente
       de PII (ver sección arriba) — decisión del equipo, no tomada
       unilateralmente.
-- [ ] `BASE CALCULO INDICADORES 2024.xlsx` sigue sin procesar (indicadores
-      agregados, no aporta filas nuevas).
+
+**Decisión ya tomada, no un pendiente:** `BASE CALCULO INDICADORES 2024.xlsx`
+no se procesa — son indicadores ya agregados (no fila por evento), no aporta
+registros nuevos para modelar.
 
 ## ⚠️ Incidente de PII (2026-09-12)
 
