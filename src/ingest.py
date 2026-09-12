@@ -185,12 +185,14 @@ def load_base_accidentes(anio: str) -> pd.DataFrame:
         raw = raw.drop(columns=[c for c in raw.columns if c.startswith("Unnamed")])
         df = raw.rename(columns=_RENAME_2024)
         df["es_considerado"] = (
-            df["Considerar"].astype("string").str.strip().str.upper().map(_BOOL_MAP)
+            df["Considerar"].astype("string").str.strip().str.upper()
+            .map(_BOOL_MAP).astype("boolean")
         )
         # Recategorización solo trae 'SI' cuando aplica, blanco en el resto:
         # se asume blanco == no recategorizado (ver diccionario_datos.md).
         df["es_recategorizado"] = (
-            df["Recategorización"].astype("string").fillna("NO").str.strip().str.upper().eq("SI")
+            df["Recategorización"].astype("string").fillna("NO").str.strip().str.upper()
+            .eq("SI").astype("boolean")
         )
         df = df.drop(columns=["Considerar", "Recategorización"])
     else:
@@ -369,7 +371,8 @@ def load_accidentes_tablero() -> pd.DataFrame:
 
     df["fecha_evento"] = pd.to_datetime(df["fecha_evento"], errors="coerce")
     df["es_hard_stop"] = (
-        df["es_hard_stop"].astype("string").str.strip().str.upper().map(_BOOL_MAP)
+        df["es_hard_stop"].astype("string").str.strip().str.upper()
+        .map(_BOOL_MAP).astype("boolean")
     )
     for col in _CATEGORICAL_COLS_TABLERO_ACCIDENTES:
         if col in df.columns:
@@ -397,7 +400,8 @@ def load_incidentes() -> pd.DataFrame:
 
     df["fecha_evento"] = pd.to_datetime(df["fecha_evento"], errors="coerce")
     df["es_verificado"] = (
-        df["es_verificado"].astype("string").str.strip().str.upper().map(_BOOL_MAP)
+        df["es_verificado"].astype("string").str.strip().str.upper()
+        .map(_BOOL_MAP).astype("boolean")
     )
     for col in _CATEGORICAL_COLS_INCIDENTES:
         df[col] = normalize_categorical(df[col])
