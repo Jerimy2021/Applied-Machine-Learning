@@ -117,7 +117,12 @@ limpieza; el resto son análogas a sus contrapartes de `accidentes_2023/2024`.
 | `tipo_contacto` | **100% nula** — esta columna no existía en el Excel para el rango 2012-2022, se introdujo recién en 2023. No es un error, es que el dato no se recolectaba entonces. |
 | `gravedad` (`GG`), `dano` (`DAÑO`), `contrata`, `nota_midot`, `modalidad` | Específicas de este archivo, sin equivalente directo en 2023/2024 — no se intentó forzar un mapeo. |
 | `fecha_evento` | 85 de 1028 filas (8.3%) quedaron en `NaT`: el texto de fecha en el Excel original tenía errores de tipeo (ej. `"19/012/2018"` con mes inválido, `"08/11/20211"` con un dígito de más en el año, años a 2 dígitos). Se usó `errors="coerce"` — **no se adivinó ninguna fecha**, quedan como `NaT` y deben excluirse de cualquier análisis por fecha. |
-| `id_persona` | Igual método que en 2023/2024, hash de la columna `NOMBRE` (que en este archivo viene sola, no separada en apellidos/nombres). |
+| `id_persona` | Igual método que en 2023/2024, hash de la columna `NOMBRE` (que en este archivo viene sola, no separada en apellidos/nombres). 54 filas (5.25%) quedan nulas: el Excel original no traía nombre en esas filas. |
+| `programa` | Categórica, sede/programa productivo (ej. `GALLETERA LIMA`, `COPSA`, `TEAL`, `BOLIVIA`, `DETERGENTES`). 20.7% nula. |
+| `lugar` | Categórica, sede física donde ocurrió el evento (ej. `COPSA`, `GALLETERA LIMA`, `NUTRICION ANIMAL TRUJILLO`). Distinta de `area_responsabilidad`. 6.0% nula. |
+| `experiencia_puesto` | Texto libre (`object`), sin transformación: mezcla formatos como `"7 años y 10 meses"`, `"3 años"`. **Calidad de dato**: al menos un valor observado (`"Accidente Incapacitante "`) no es una experiencia sino texto de otra columna, aparentemente mal ubicado en el Excel original — no se corrigió, se reporta tal cual. |
+| `dias_perdidos` | Numérica, días de descanso médico por la lesión. 11.1% nula. Análoga a `dias_dm` de 2023/2024. |
+| `dias_mas_ansi` | Numérica, días adicionales según cargo ANSI. 11.2% nula. Análoga a `dias_dm_total_indicador` de 2023/2024. |
 
 **`accidentes_2025_2026.csv`** (hoja `2° Accidentes`):
 
@@ -126,12 +131,19 @@ limpieza; el resto son análogas a sus contrapartes de `accidentes_2023/2024`.
 | `es_hard_stop` | Única columna de seguimiento/checklist de la hoja que se conservó — sus valores eran `SI`/`SÍ`/`NO` limpios. Las demás (cierre de investigación, difusión de lecciones aprendidas, `¿Tiene ROM?`) se descartaron, ver bitácora. |
 | `dias_registrables`, `horas_trabajadas_turno`, `tiempo_empresa_meses`/`_anios` | Vienen ya numéricas en el Excel, sin transformación adicional más allá de coerción de tipo. |
 | `id_persona` | A diferencia de 2023/2024, aquí la fuente combina apellidos + nombre + **DNI** antes de hashear (el DNI también es PII y se descarta tras usarlo). |
+| `vicepresidencia` | Categórica (`SUPPLY CHAIN`, `OTRAS VICEPRESIDENCIAS`, `ADMINISTRACION`). 0.7% nula. |
+| `categoria` | Categórica, línea de negocio/dirección (ej. `HOME Y PERSONAL CARE`, `FARINACEOS`, `MOLINOS`). Sin nulos. |
+| `dia_semana` | Categórica, día de la semana del evento (`LUNES`...`DOMINGO`), redundante con `fecha_evento`. Sin nulos. |
+| `causa_basica`, `causa_principal` | Categóricas según metodología SCAT; texto largo y con variantes de redacción muy similares (ej. dos versiones de "ESTANDARES DE TRABAJO INADECUADOS..." que difieren solo en un espacio) — no se unificaron, quedan como categorías distintas. 49.0% y 3.3% nulas respectivamente. |
+| `causa_inmediata` | Categórica: `ACTO INSEGURO` / `CONDICION INSEGURA`. 3.3% nula. |
+| `trimestre` | Categórica (`T1`-`T4`), redundante con `fecha_evento`. Sin nulos. |
 
 **`incidentes_2025_2026.csv`** (hoja `1° Incidentes`):
 
 | Columna | Notas |
 |---|---|
 | — | Esta hoja no trae nombre/apellido/DNI de ninguna persona — no requirió anonimización. Es la única de las 5 fuentes procesadas sin columna `id_persona`. |
+| `tipo_evento` | Categórica: mayoría `INCIDENTE` (201), `ALTO POTENCIAL` (82), `DANO MATERIAL` (44); el resto son ~10 categorías con 1-2 casos cada una (ej. `FUGA DE CLORO`, `AMAGO DE INCENDIO`), incluyendo una variante mal escrita (`INDICENTE`, 1 caso) no unificada con `INCIDENTE`. Sin nulos. |
 | `es_verificado` | Booleano `SI`/`NO` del Excel original; 96% nulo (la mayoría de incidentes no tenían este campo llenado). |
 
 ## Nulos detectados
