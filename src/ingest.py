@@ -261,6 +261,19 @@ _CATEGORICAL_COLS_HISTORICO = [
 
 _COLUMNAS_NUMERICAS_HISTORICO = ["edad_anios", "dias_perdidos", "dias_mas_ansi", "nota_midot"]
 
+# 3 celdas de "HISTORICO ACCIDENTES" quedaron mal pegadas: traen el mismo
+# texto que la columna GG (gravedad) de esa misma fila, no un valor propio de
+# su columna. Confirmado fila por fila que NO es un corrimiento de columnas
+# (el resto de cada fila tiene valores normales para su propia columna) —
+# ver bitácora en reports/diccionario_datos.md. Se marcan como NA solo esas
+# celdas puntuales, se conserva el resto de la fila.
+# (índice de fila, columna renombrada) según el índice original del Excel.
+_CELDAS_CONTAMINADAS_HISTORICO = [
+    (12, "experiencia_puesto"),
+    (36, "experiencia_puesto"),
+    (920, "turno"),
+]
+
 _RENAME_TABLERO_ACCIDENTES = {
     "N° de ROM": "nro_rom", "SOCIEDAD2": "sociedad", "VP": "vicepresidencia",
     "DIRECCIÓN": "direccion", "CATEGORÍA": "categoria",
@@ -322,6 +335,10 @@ def load_historico_accidentes() -> pd.DataFrame:
     raw = load_raw("Resultados SST 2023 v06final.xlsx", sheet_name="HISTORICO ACCIDENTES")
     raw.columns = raw.columns.str.strip()
     df = raw.rename(columns=_RENAME_HISTORICO)
+
+    # Celdas mal pegadas (ver constante arriba): se limpia solo la celda, no la fila.
+    for fila, columna in _CELDAS_CONTAMINADAS_HISTORICO:
+        df.loc[fila, columna] = pd.NA
 
     # Nunca se guarda el nombre real: se reemplaza por un id sintético.
     df = anonymize_column(df, "NOMBRE", salt="sst-alicorp")
