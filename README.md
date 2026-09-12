@@ -70,7 +70,6 @@ por lo tanto la única usable para este target).
 |---|---|---|---|
 | `edad_anios` | Persona | Sí | Conocida al momento del evento |
 | `sexo` | Persona | Sí | Conocida al momento del evento |
-| `experiencia_puesto` | Persona | Sí | Conocida al momento del evento |
 | `puesto_trabajo` | Trabajo | Sí | Conocida al momento del evento |
 | `turno` | Trabajo | Sí | Conocida al momento del evento |
 | `programa` | Trabajo | Sí | Conocida al momento del evento |
@@ -80,6 +79,7 @@ por lo tanto la única usable para este target).
 | `actividad_realizada` | Evento | Sí | Conocida al momento del evento |
 | `mes` | Evento | Sí | Conocida al momento del evento |
 | `anio` | Evento | Sí | Conocida al momento del evento |
+| `experiencia_puesto` | — | No, fuera de alcance de esta fase | Texto libre con unidades mezcladas (años+meses, días, semanas, un entero suelto sin unidad, y typos ambiguos como `"1.5 ños"`) — no se puede parsear a numérico sin adivinar. **Pendiente de normalización en una fase futura** |
 | `dias_perdidos`, `dias_mas_ansi`, `parte_cuerpo_afectada`, `dano`, `cargo_ansi`, `nota_midot` | — | No | **Data leakage**: solo se conocen después del desenlace |
 | `tipo_contacto` (100%), `nota_midot` (98.6%), `cargo_ansi` (97.7%), `modalidad` (95.7%), `nro_rom` (90%), `contrata` (73.3%) | — | No | Nulos >70% — el criterio de nulos manda sobre la relevancia conceptual |
 | `nro_rom`, `id_persona` | — | No | Identificador, no predictor |
@@ -116,11 +116,14 @@ columnas comunes a las 4 fuentes de accidentes.
 
 **Matriz de correlación:** **PENDIENTE** — no calculada aún (confirmado: no
 hay ninguna llamada a `.corr()` en `src/` ni en los notebooks). Plan
-acordado: Pearson entre las únicas 4 columnas numéricas de X
-(`edad_anios`, `experiencia_puesto`, `mes`, `anio`) para detectar
+acordado: Pearson entre las 3 columnas numéricas de X (`edad_anios`, `mes`,
+`anio` — `experiencia_puesto` queda fuera de X, ver sección 5) para detectar
 redundancia; Cramér's V + tablas de contingencia / tasa de incapacitantes por
-categoría para las columnas categóricas contra `y`. El objetivo es descartar
-X redundantes, no medir importancia (eso lo dará el modelo en fase 2).
+categoría para las columnas categóricas contra `y` (con nota de que en
+`lugar`/`fuente_peligro`/`puesto_trabajo`, de cardinalidad muy alta, el
+resultado es poco confiable por celdas con `n<5` — interpretar solo el orden
+de magnitud). El objetivo es descartar X redundantes, no medir importancia
+(eso lo dará el modelo en fase 2).
 
 ## 8. Preparación de datos
 
@@ -160,6 +163,10 @@ total, entre las 4 fuentes de accidentes/incidentes). El problema, el target
       documentarla en `reports/diccionario_datos.md`.
 - [ ] Decidir el caso a caso de las 2 filas con gravedad "DAÑO A LA SALUD" /
       "ACCIDENTE FUERA DEL TRABAJO".
+- [ ] Normalizar `experiencia_puesto` (texto libre, unidades mezcladas) para
+      poder usarla como X numérica en una fase futura — no en esta.
+- [ ] Agrupar sinónimos de `turno` (`normalize_turno()` en `src/clean.py`,
+      mapeo pendiente de aprobación del equipo).
 - [ ] Calcular la matriz de correlación (Pearson + Cramér's V, ver sección 7)
       y actualizar el EDA con hallazgos evaluados contra `es_incapacitante`
       — tarea de equipo, repartida aparte.
