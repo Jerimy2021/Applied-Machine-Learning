@@ -68,7 +68,7 @@ ESQUEMA_ACCIDENTES: tuple[Columna, ...] = (
     Columna("tipo_contrato", "category", ("2023", "2024")),
     Columna("poblacion", "float64", ("2024",)),
     Columna("es_considerado", "boolean", ("2024",)),
-    Columna("es_recategorizado", "bool", ("2024",)),
+    Columna("es_recategorizado", "boolean", ("2024",)),
     Columna("id_persona", "str", ("2023", "2024")),  # anonimizado, ver diccionario_datos.md
     Columna("fuente_archivo", "str", ("2023", "2024")),
 )

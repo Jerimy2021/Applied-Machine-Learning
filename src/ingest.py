@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.clean import anonymize_column, normalize_categorical
+from src.clean import anonymize_column, normalize_categorical, normalize_turno, redact_pii_libre
 from src.config import INTERIM_DIR, PROCESSED_DIR, RAW_DIR
 
 
@@ -185,12 +185,14 @@ def load_base_accidentes(anio: str) -> pd.DataFrame:
         raw = raw.drop(columns=[c for c in raw.columns if c.startswith("Unnamed")])
         df = raw.rename(columns=_RENAME_2024)
         df["es_considerado"] = (
-            df["Considerar"].astype("string").str.strip().str.upper().map(_BOOL_MAP)
+            df["Considerar"].astype("string").str.strip().str.upper()
+            .map(_BOOL_MAP).astype("boolean")
         )
         # Recategorización solo trae 'SI' cuando aplica, blanco en el resto:
         # se asume blanco == no recategorizado (ver diccionario_datos.md).
         df["es_recategorizado"] = (
-            df["Recategorización"].astype("string").fillna("NO").str.strip().str.upper().eq("SI")
+            df["Recategorización"].astype("string").fillna("NO").str.strip().str.upper()
+            .eq("SI").astype("boolean")
         )
         df = df.drop(columns=["Considerar", "Recategorización"])
     else:
@@ -215,6 +217,7 @@ def load_base_accidentes(anio: str) -> pd.DataFrame:
     for col in _CATEGORICAL_COLS:
         if col in df.columns:
             df[col] = normalize_categorical(df[col])
+    df["descripcion_accidente"] = redact_pii_libre(df["descripcion_accidente"])
 
     df["fuente_archivo"] = anio
     return df.reset_index(drop=True)
@@ -258,6 +261,38 @@ _CATEGORICAL_COLS_HISTORICO = [
 ]
 
 _COLUMNAS_NUMERICAS_HISTORICO = ["edad_anios", "dias_perdidos", "dias_mas_ansi", "nota_midot"]
+
+# 3 celdas de "HISTORICO ACCIDENTES" quedaron mal pegadas: traen el mismo
+# texto que la columna GG (gravedad) de esa misma fila, no un valor propio de
+# su columna. Confirmado fila por fila que NO es un corrimiento de columnas
+# (el resto de cada fila tiene valores normales para su propia columna) —
+# ver bitácora en reports/diccionario_datos.md. Se marcan como NA solo esas
+# celdas puntuales, se conserva el resto de la fila.
+# (índice de fila, columna renombrada) según el índice original del Excel.
+_CELDAS_CONTAMINADAS_HISTORICO = [
+    (12, "experiencia_puesto"),
+    (36, "experiencia_puesto"),
+    (920, "turno"),
+]
+
+# PII real (nombre completo de una persona, en un caso junto a su RUC) que
+# quedó en columnas que no son de identidad (`area_responsabilidad`,
+# `contrata`), detectado en una auditoría de PII sobre las 5 fuentes
+# procesadas. Se limpia solo la celda puntual — ver bitácora en
+# reports/diccionario_datos.md. (Un 6to caso encontrado en la auditoría,
+# "Casimiro Villacres Taiwan" en `area_responsabilidad`, no se incluye aquí
+# porque su fila tiene anio=2023 y ya queda excluida por el filtro de año de
+# esta función — no llega a estar en el CSV final.)
+_CELDAS_PII_HISTORICO = [
+    (868, "area_responsabilidad"),  # "De La Cruz Rojas,Bladimir Marco"
+    (874, "area_responsabilidad"),  # "Doroteo Rodriguez Liz Melissa"
+    (873, "area_responsabilidad"),  # "Perez Ambrosio Leandro Estefano"
+    (974, "area_responsabilidad"),  # "La Rosa Lescano Gerald Gil"
+    (867, "area_responsabilidad"),  # "Ricardo Corrales Valqui"
+    (805, "contrata"),  # "Francisco Serpa Vega (RUC 1008276111)"
+    (312, "contrata"),  # "Juan Carlos Echegaray (Transp)"
+    (367, "contrata"),  # ": Rodriguez Flores Juan Luis (Concesionario)"
+]
 
 _RENAME_TABLERO_ACCIDENTES = {
     "N° de ROM": "nro_rom", "SOCIEDAD2": "sociedad", "VP": "vicepresidencia",
@@ -321,6 +356,14 @@ def load_historico_accidentes() -> pd.DataFrame:
     raw.columns = raw.columns.str.strip()
     df = raw.rename(columns=_RENAME_HISTORICO)
 
+    # Celdas mal pegadas (ver constante arriba): se limpia solo la celda, no la fila.
+    for fila, columna in _CELDAS_CONTAMINADAS_HISTORICO:
+        df.loc[fila, columna] = pd.NA
+
+    # PII real en columnas que no son de identidad (ver constante arriba).
+    for fila, columna in _CELDAS_PII_HISTORICO:
+        df.loc[fila, columna] = pd.NA
+
     # Nunca se guarda el nombre real: se reemplaza por un id sintético.
     df = anonymize_column(df, "NOMBRE", salt="sst-alicorp")
     df = df.rename(columns={"NOMBRE": "id_persona"})
@@ -330,6 +373,8 @@ def load_historico_accidentes() -> pd.DataFrame:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     for col in _CATEGORICAL_COLS_HISTORICO:
         df[col] = normalize_categorical(df[col])
+    df["descripcion_accidente"] = redact_pii_libre(df["descripcion_accidente"])
+    df["turno"] = normalize_turno(df["turno"])
 
     df["fuente_archivo"] = "historico_2012_2022"
     df = df[df["anio"] < 2023].reset_index(drop=True)
@@ -369,11 +414,13 @@ def load_accidentes_tablero() -> pd.DataFrame:
 
     df["fecha_evento"] = pd.to_datetime(df["fecha_evento"], errors="coerce")
     df["es_hard_stop"] = (
-        df["es_hard_stop"].astype("string").str.strip().str.upper().map(_BOOL_MAP)
+        df["es_hard_stop"].astype("string").str.strip().str.upper()
+        .map(_BOOL_MAP).astype("boolean")
     )
     for col in _CATEGORICAL_COLS_TABLERO_ACCIDENTES:
         if col in df.columns:
             df[col] = normalize_categorical(df[col])
+    df["descripcion_accidente"] = redact_pii_libre(df["descripcion_accidente"])
 
     df["fuente_archivo"] = "tablero_2025_2026"
     return df.reset_index(drop=True)
@@ -397,10 +444,13 @@ def load_incidentes() -> pd.DataFrame:
 
     df["fecha_evento"] = pd.to_datetime(df["fecha_evento"], errors="coerce")
     df["es_verificado"] = (
-        df["es_verificado"].astype("string").str.strip().str.upper().map(_BOOL_MAP)
+        df["es_verificado"].astype("string").str.strip().str.upper()
+        .map(_BOOL_MAP).astype("boolean")
     )
     for col in _CATEGORICAL_COLS_INCIDENTES:
         df[col] = normalize_categorical(df[col])
+    df["descripcion_incidente"] = redact_pii_libre(df["descripcion_incidente"])
+    df["danos_reales_o_potenciales"] = redact_pii_libre(df["danos_reales_o_potenciales"])
 
     df["fuente_archivo"] = "tablero_2025_2026"
     return df.reset_index(drop=True)
