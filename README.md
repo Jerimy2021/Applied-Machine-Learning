@@ -142,15 +142,24 @@ excepción marcada, ninguna hace deduplicación, encoding ni escalado):
 | Anonimización | `clean.anonymize_column()`: SHA-256 truncado a 12 car., salt fijo del proyecto |
 | Imputación | Ninguna, salvo `es_recategorizado` (2024): blanco→`False` porque es un casillero tipo flag, no un dato faltante |
 | Derivación de `es_incapacitante` | `clean.derive_es_incapacitante()` — reglas en la sección 4 |
-| Manejo de outliers | Ninguno — se reportan (IQR, `clean.report_outliers_iqr()`) y se visualizan (boxplot), no se eliminan ni capan. Ver hallazgos abajo |
+| Manejo de outliers | Se reportan todos (IQR, `clean.report_outliers_iqr()`) y se visualizan (boxplot); solo se corrigen a `NA` los que violan una regla de negocio verificable — ver detalle abajo |
 
-**Outliers encontrados, sin corregir (política igual que con nulos: reportar,
-no imputar/caper en silencio):** `tiempo_experiencia_meses` llega a 2190
-meses (≈182 años, imposible), `dias_perdidos`/`dias_mas_ansi` del histórico
-tienen 3 filas en exactamente 6000 (valor sospechoso de tope/placeholder), y
-4 filas del histórico tienen `edad_anios <= 0` (imposible, aunque el IQR no
-las marca como atípicas). Boxplots en `reports/figures/outliers_boxplot_*.png`
-(`01_eda_accidentes.ipynb`). Detalle completo y la decisión pendiente en
+**Outliers: qué se corrigió y qué no (regla: solo se toca lo que viola una
+regla de negocio verificable, nunca un valor solo por ser estadísticamente
+extremo):**
+
+| Corregido a `NA` | Regla de negocio |
+|---|---|
+| `edad_anios <= 0` (histórico, 4 filas) | Una edad de 0 es imposible para un trabajador |
+| `tiempo_experiencia_meses` donde `/12 > edad_anios` (2024, 2 filas) | Nadie tiene más años de experiencia que de vida |
+| `dias_perdidos`/`dias_mas_ansi == 6000` (histórico, 4 filas) | Mismo valor exacto repetido en accidentes no relacionados — más compatible con un tope/placeholder del sistema que con un dato real |
+
+**Sin corregir a propósito** (extremos estadísticos sin regla de negocio que
+los marque como error): `dias_dm`, `dias_dm_total_indicador`, `nota_midot`,
+`dias_registrables`, `tiempo_empresa_meses`/`tiempo_empresa_anios`. Capar o
+eliminar estos solo por ser grandes sería inventar un criterio, no corregir
+un error confirmado. Boxplots en `reports/figures/outliers_boxplot_*.png`
+(`01_eda_accidentes.ipynb`). Detalle completo en
 [reports/diccionario_datos.md](reports/diccionario_datos.md#valores-atípicos-outliers).
 
 Justificación completa de cada decisión en
@@ -188,28 +197,31 @@ corre de punta a punta — ver también la sección de Incidente de PII arriba.
 - [x] Decisión confirmada sobre las 2 filas de `gravedad` ambiguas ("DAÑO A
       LA SALUD" / "ACCIDENTE FUERA DEL TRABAJO"): quedan en `NA`, excluidas
       de entrenamiento/evaluación — no se reclasifican ni se eliminan filas.
+- [x] Outliers que violan una regla de negocio verificable, corregidos a
+      `NA` (`edad_anios`, `tiempo_experiencia_meses`,
+      `dias_perdidos`/`dias_mas_ansi` — ver sección 8); el resto se deja
+      igual, documentado.
+- [x] Columnas con >80% de nulos: se decide dejarlas en `data/processed/`
+      sin eliminar en esta fase (ver diccionario, sección "Nulos detectados").
+- [x] `lugar`/`fuente_peligro`/`puesto_trabajo`: se decide diferir su
+      agrupamiento (no inventar equivalencias de dominio sin criterio
+      verificable) — mismo principio que la decisión de `turno`.
+- [x] Completadas las 6 celdas `### Hallazgo` de `02_eda_dirigido.ipynb`.
 
-**Pendiente:**
+**Pendiente — genuinamente fuera de lo que se puede decidir con los datos
+disponibles:**
 
-- [ ] Completar las 6 celdas `### Hallazgo` de `02_eda_dirigido.ipynb` con
-      la lectura del equipo (el notebook calcula, no interpreta).
 - [ ] `experiencia_puesto` queda fuera de X en esta fase (texto libre,
       unidades mezcladas) — normalizarla para usarla como X numérica es una
       fase futura, no de este hito.
-- [ ] `lugar`, `fuente_peligro`, `puesto_trabajo` necesitan una regla de
-      agrupación por criterio de dominio (alta cardinalidad) antes de
-      usarse con confianza en un modelo.
 - [ ] Revisión humana de una muestra del texto libre redactado
       (`descripcion_accidente`/`descripcion_incidente`) antes de compartirlo
       fuera del equipo — la redacción automática es una heurística, no un
-      NER validado.
+      NER validado; ningún proceso automatizado sustituye esa revisión antes
+      de una salida externa.
 - [ ] Decidir si hace falta reescribir el historial de git por el incidente
-      de PII (ver sección arriba) — decisión del equipo, no tomada
-      unilateralmente.
-- [ ] Decidir qué hacer con los outliers reportados (`tiempo_experiencia_meses`
-      en 2190, `dias_perdidos`/`dias_mas_ansi` en 6000, `edad_anios <= 0`):
-      investigar contra el Excel original, caper, o excluir — ver
-      `reports/diccionario_datos.md`, sección "Valores atípicos".
+      de PII (ver sección arriba) — **requiere autorización explícita del
+      dueño del repositorio**, no se toma por delegación general.
 
 **Decisión ya tomada, no un pendiente:** `BASE CALCULO INDICADORES 2024.xlsx`
 no se procesa — son indicadores ya agregados (no fila por evento), no aporta

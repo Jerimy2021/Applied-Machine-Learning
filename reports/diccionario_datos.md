@@ -201,7 +201,10 @@ el Excel original solo llena a veces) y `fecha_ingreso_labores` (43%).
 **`accidentes_historico_2012_2022.csv` (1028 filas):** `tipo_contacto` 100%
 nulo (no existía en esa época, ver arriba), `nota_midot` 98.6%, `cargo_ansi`
 97.7%, `modalidad` 95.7%, `nro_rom` 90.0%, `contrata` 73.3%,
-`area_responsabilidad` 48.7%, `edad_anios` 37.1%.
+`area_responsabilidad` 48.7%, `edad_anios` 37.45% (incluye 4 valores
+imposibles corregidos a `NaN`, ver sección "Valores atípicos"),
+`dias_perdidos` 11.38% y `dias_mas_ansi` 11.58% (ídem, incluyen valores en
+6000 corregidos).
 
 **`accidentes_2025_2026.csv` (151 filas):** `horas_trabajadas_turno` 98.7%,
 `es_hard_stop` 79.5%, `edad_anios` 77.5%, `tiempo_empresa_anios`/`_meses`
@@ -227,25 +230,49 @@ pendiente de decisión del equipo — no se decidió en esta pasada.
 |---|---|---|---|---|
 | `accidentes_2023.csv` + `accidentes_2024.csv` | `dias_dm` | 38 de 352 (10.8%) | 0 / 180 | — |
 | ídem | `dias_dm_total_indicador` | 36 de 329 (10.9%) | 0 / 904 | — |
-| ídem | `tiempo_experiencia_meses` | 24 de 194 (12.4%) | 0 / **2190** | 2190 meses ≈ 182 años — imposible como experiencia laboral, error de dato evidente |
-| `accidentes_historico_2012_2022.csv` | `dias_perdidos` | 110 de 914 (12.0%) | 0 / **6000** | 3 filas en exactamente 6000 — valor sospechoso de ser un tope/placeholder, no un dato real de días perdidos |
-| ídem | `dias_mas_ansi` | 111 de 913 (12.2%) | 0 / 6000 | Mismas 3 filas que `dias_perdidos` |
-| ídem | `nota_midot` | 3 de 14 (21.4%) | 28 / 75 | Muestra muy chica (14 no nulos de 1028) |
-| ídem | **`edad_anios`** | 0 (no marcado por IQR) | **0** / 63 | 4 filas con `edad_anios <= 0` — no es un outlier estadístico (no supera el umbral IQR), pero sí una violación de regla de negocio: edad 0 es imposible para un trabajador. El IQR no sustituye el criterio de negocio |
-| `accidentes_2025_2026.csv` | `dias_registrables` | 18 de 151 (11.9%) | 1 / 1140 | — |
-| ídem | `tiempo_empresa_meses` / `tiempo_empresa_anios` | 1 cada una | — | Un solo caso extremo cada una |
+| ídem | `tiempo_experiencia_meses` | 24 de 194 (12.4%), **2 corregidas** | 0 / 2190→`NaN` | Ya corregido (ver decisión abajo) |
+| `accidentes_historico_2012_2022.csv` | `dias_perdidos` | 110 de 914 (12.0%), **3 corregidas** | 0 / 6000→`NaN` | Ya corregido |
+| ídem | `dias_mas_ansi` | 111 de 913 (12.2%), **4 corregidas** | 0 / 6000→`NaN` | Ya corregido — 1 fila más de lo reportado antes (fila con `dias_perdidos=0` pero `dias_mas_ansi=6000`, encontrada al verificar ambas columnas juntas) |
+| ídem | `nota_midot` | 3 de 14 (21.4%) | 28 / 75 | Muestra muy chica (14 no nulos de 1028) — sin corregir, no hay regla de negocio clara para esta columna |
+| ídem | **`edad_anios`** | 0 (no marcado por IQR), **4 corregidas** | 0→`NaN` / 63 | Ya corregido (ver decisión abajo) |
+| `accidentes_2025_2026.csv` | `dias_registrables` | 18 de 151 (11.9%) | 1 / 1140 | Sin corregir — 1140 días (~3 años) es extremo pero no hay una regla de negocio verificable (a diferencia de `edad_anios`/`tiempo_experiencia_meses`) que lo marque como imposible |
+| ídem | `tiempo_empresa_meses` / `tiempo_empresa_anios` | 1 cada una | — | Sin corregir, mismo motivo |
 
-**Decisión pendiente del equipo** (no se decide unilateralmente, mismo
-criterio que con los nulos >80%): ¿las 3 filas de `dias_perdidos`/`dias_mas_ansi`
-en 6000 y la fila de `tiempo_experiencia_meses` en 2190 se investigan caso a
-caso contra el Excel original, se capan a un máximo razonable, o se
-excluyen? ¿Las 4 filas con `edad_anios <= 0` se ponen en `NaN` (dato
-imposible) o se revisan contra el registro original primero?
+**Decisión tomada (2026-09-12):** se corrigen a `NA` (sin imputar ningún
+reemplazo) solo los valores que violan una **regla de negocio verificable**,
+no todo lo que el IQR marca como estadísticamente atípico — un valor
+extremo no es automáticamente un error:
 
-**Pendiente de decidir con el equipo** (no se decide unilateralmente):
-¿qué hacer con las columnas que superan 80% de nulos en cualquiera de los 5
-archivos? Opciones a discutir: dejarlas tal cual para el EDA inicial, o
-excluirlas de cualquier futuro dataset de modelado por baja cobertura.
+- `edad_anios <= 0` en `accidentes_historico_2012_2022.csv` (4 filas): una
+  edad de 0 es imposible para un trabajador.
+- `tiempo_experiencia_meses / 12 > edad_anios` en `accidentes_2024.csv`
+  (2 filas, ninguna en 2023): nadie puede tener más años de experiencia que
+  de vida — regla relativa a la propia fila, no un umbral fijo.
+- `dias_perdidos == 6000` y `dias_mas_ansi == 6000` en
+  `accidentes_historico_2012_2022.csv` (4 filas en total, no 3: se encontró
+  una fila adicional con `dias_perdidos=0` pero `dias_mas_ansi=6000`,
+  inconsistente entre sí): el mismo valor exacto repetido en filas de
+  accidentes distintos y no relacionados es más compatible con un
+  tope/placeholder del sistema de origen que con un dato real — no se
+  intentó adivinar el valor real, se marca como `NA`.
+
+**Se decide explícitamente NO tocar** el resto de los outliers IQR de la
+tabla (`dias_dm`, `dias_dm_total_indicador`, `nota_midot`,
+`dias_registrables`, `tiempo_empresa_meses/anios`): son estadísticamente
+extremos pero no violan ninguna regla de negocio verificable con la
+información disponible — capar o eliminar un valor solo por ser grande
+sería inventar un criterio, no corregir un error confirmado. Implementado en
+`src/ingest.py` (`load_base_accidentes`, `load_historico_accidentes`).
+
+**Decisión tomada (2026-09-12):** las columnas con >80% de nulos en
+cualquiera de los 5 archivos (`item`, `nro_rom`, `cargo_ansi`,
+`tipo_contacto`, `nota_midot`, `modalidad`, `horas_trabajadas_turno`,
+`es_verificado`, etc.) **se quedan en `data/processed/` sin eliminar** — en
+esta fase de EDA/limpieza no se restringe el dataset. Quedan marcadas aquí
+como "no recomendadas como X por baja cobertura"; la decisión de excluirlas
+o no de un dataset de modelado se toma en la fase de modelado, con el
+contexto de ese momento (ver README, sección 5, para las X ya descartadas
+del target actual por este mismo motivo).
 
 ## Bitácora de decisiones de limpieza
 
@@ -266,7 +293,9 @@ excluirlas de cualquier futuro dataset de modelado por baja cobertura.
 | 2026-09-12 | `turno` de `HISTORICO ACCIDENTES`, 32 filas con `"-"` | Recodificado a `NA` dentro de `normalize_turno()` | Mismo criterio ya aplicado en `sexo`/`gravedad`: `"-"` es un marcador de "no reportado", no una categoría informativa | Equipo, confirmado explícitamente |
 | 2026-09-12 | `area_responsabilidad`/`contrata` de `HISTORICO ACCIDENTES`, 8 celdas | Puestas en `NA` | Auditoría de PII: nombre completo de una persona (1 caso con RUC) filtrado por error hacia una columna que no es de identidad — ver sección "Auditoría de PII" | Equipo, a raíz de auditoría explícita solicitada |
 | 2026-09-12 | `descripcion_accidente` (4 fuentes) y `descripcion_incidente`/`danos_reales_o_potenciales` (incidentes) | Redactadas con `clean.redact_pii_libre()` | Auditoría de PII encontró nombres de personas y un DNI explícito en hasta 40.6% de las filas de algún archivo — ver sección "Auditoría de PII" para el detalle y limitaciones de la heurística | Equipo, a raíz de auditoría explícita solicitada |
-| 2026-09-12 | `tiempo_experiencia_meses` (2023/2024, máx. 2190), `dias_perdidos`/`dias_mas_ansi` (histórico, 3 filas en 6000), `edad_anios` (histórico, 4 filas ≤0) | **Ninguna corrección aplicada** — solo reportados (`clean.report_outliers_iqr()`) y visualizados (boxplot) | Son outliers/violaciones de regla de negocio evidentes, pero investigarlos contra el Excel original, caparlos o excluirlos es una decisión de limpieza que no se toma sin el equipo (mismo principio que con los nulos) | Sin decidir — pendiente, ver sección "Valores atípicos" |
+| 2026-09-12 | `edad_anios` (histórico, 4 filas), `tiempo_experiencia_meses` (2024, 2 filas), `dias_perdidos`/`dias_mas_ansi` (histórico, 4 filas) | Corregidas a `NA` en `src/ingest.py`, sin imputar reemplazo | Cada una viola una regla de negocio verificable (edad ≤0 imposible; experiencia en años > edad imposible; 6000 repetido en filas no relacionadas es un valor de sistema, no un dato real) — no se tocó ningún otro outlier IQR sin esa verificación | Equipo, criterio: solo corregir violaciones de regla de negocio confirmadas, no todo extremo estadístico |
+| 2026-09-12 | Columnas con >80% de nulos en cualquiera de las 5 fuentes (`item`, `nro_rom`, `cargo_ansi`, `tipo_contacto`, `nota_midot`, `modalidad`, `horas_trabajadas_turno`, `es_verificado`, etc.) | Se quedan en `data/processed/` sin eliminar | En esta fase (EDA/limpieza, sin modelar) no se elimina ninguna columna del dataset — la decisión de qué X usar se toma en la fase de modelado, no antes. Se marcan como "no recomendadas como X por baja cobertura" en el diccionario, no se borran del CSV | Equipo, criterio: no restringir el dataset antes de que exista una necesidad de modelado concreta |
+| 2026-09-12 | `lugar`, `fuente_peligro`, `puesto_trabajo` (histórico, 344-371 categorías) | Se difiere el agrupamiento — no se fuerza ninguna regla | A diferencia de `turno` (sinónimos obvios de un mismo número/franja), agrupar estas 3 columnas requiere criterio de dominio de SST/planta (qué lugares o peligros son "lo mismo") que no está disponible — inventarlo sería una decisión de negocio no verificable, mismo motivo por el que no se unificó turno numerado con franja horaria | Equipo, mismo criterio que la decisión de `turno` |
 
 ## Anonimización
 

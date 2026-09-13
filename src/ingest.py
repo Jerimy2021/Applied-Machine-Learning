@@ -219,6 +219,13 @@ def load_base_accidentes(anio: str) -> pd.DataFrame:
             df[col] = normalize_categorical(df[col])
     df["descripcion_accidente"] = redact_pii_libre(df["descripcion_accidente"])
 
+    # Valor imposible por regla de negocio verificable (no un umbral
+    # arbitrario): nadie puede tener más años de experiencia que de vida. Se
+    # marca como NA, no se imputa ningún reemplazo. Ver diccionario_datos.md,
+    # sección "Valores atípicos".
+    imposible = (df["tiempo_experiencia_meses"] / 12) > df["edad_anios"]
+    df.loc[imposible, "tiempo_experiencia_meses"] = pd.NA
+
     df["fuente_archivo"] = anio
     return df.reset_index(drop=True)
 
@@ -375,6 +382,13 @@ def load_historico_accidentes() -> pd.DataFrame:
         df[col] = normalize_categorical(df[col])
     df["descripcion_accidente"] = redact_pii_libre(df["descripcion_accidente"])
     df["turno"] = normalize_turno(df["turno"])
+
+    # Valores imposibles por regla de negocio, no umbral arbitrario. Se
+    # marcan como NA, no se imputa ningún reemplazo. Ver diccionario_datos.md,
+    # sección "Valores atípicos".
+    df.loc[df["edad_anios"] <= 0, "edad_anios"] = pd.NA
+    df.loc[df["dias_perdidos"] == 6000, "dias_perdidos"] = pd.NA
+    df.loc[df["dias_mas_ansi"] == 6000, "dias_mas_ansi"] = pd.NA
 
     df["fuente_archivo"] = "historico_2012_2022"
     df = df[df["anio"] < 2023].reset_index(drop=True)
