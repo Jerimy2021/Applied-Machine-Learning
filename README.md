@@ -141,7 +141,17 @@ excepción marcada, ninguna hace deduplicación, encoding ni escalado):
 | Mapeo de booleanos | dict `_BOOL_MAP` (`SI`/`SÍ`→`True`, `NO`→`False`) vía `.map()` |
 | Anonimización | `clean.anonymize_column()`: SHA-256 truncado a 12 car., salt fijo del proyecto |
 | Imputación | Ninguna, salvo `es_recategorizado` (2024): blanco→`False` porque es un casillero tipo flag, no un dato faltante |
-| Derivación de `es_incapacitante` | **Pendiente de implementar** — reglas definidas en la sección 4, van en `src/clean.py` |
+| Derivación de `es_incapacitante` | `clean.derive_es_incapacitante()` — reglas en la sección 4 |
+| Manejo de outliers | Ninguno — se reportan (IQR, `clean.report_outliers_iqr()`) y se visualizan (boxplot), no se eliminan ni capan. Ver hallazgos abajo |
+
+**Outliers encontrados, sin corregir (política igual que con nulos: reportar,
+no imputar/caper en silencio):** `tiempo_experiencia_meses` llega a 2190
+meses (≈182 años, imposible), `dias_perdidos`/`dias_mas_ansi` del histórico
+tienen 3 filas en exactamente 6000 (valor sospechoso de tope/placeholder), y
+4 filas del histórico tienen `edad_anios <= 0` (imposible, aunque el IQR no
+las marca como atípicas). Boxplots en `reports/figures/outliers_boxplot_*.png`
+(`01_eda_accidentes.ipynb`). Detalle completo y la decisión pendiente en
+[reports/diccionario_datos.md](reports/diccionario_datos.md#valores-atípicos-outliers).
 
 Justificación completa de cada decisión en
 [reports/diccionario_datos.md](reports/diccionario_datos.md), sección
@@ -196,6 +206,10 @@ corre de punta a punta — ver también la sección de Incidente de PII arriba.
 - [ ] Decidir si hace falta reescribir el historial de git por el incidente
       de PII (ver sección arriba) — decisión del equipo, no tomada
       unilateralmente.
+- [ ] Decidir qué hacer con los outliers reportados (`tiempo_experiencia_meses`
+      en 2190, `dias_perdidos`/`dias_mas_ansi` en 6000, `edad_anios <= 0`):
+      investigar contra el Excel original, caper, o excluir — ver
+      `reports/diccionario_datos.md`, sección "Valores atípicos".
 
 **Decisión ya tomada, no un pendiente:** `BASE CALCULO INDICADORES 2024.xlsx`
 no se procesa — son indicadores ya agregados (no fila por evento), no aporta

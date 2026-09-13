@@ -211,6 +211,37 @@ nulo (no existía en esa época, ver arriba), `nota_midot` 98.6%, `cargo_ansi`
 `danos_reales_o_potenciales` y `fuente_peligro` 72.7% cada una, `empresa` y
 `descripcion_incidente` <1% (prácticamente completas).
 
+## Valores atípicos (outliers)
+
+**Misma política que con los nulos: no se elimina ni se capa ningún outlier
+silenciosamente.** Se detectan con la regla del rango intercuartílico (IQR:
+atípico si cae fuera de `[Q1 - 1.5*IQR, Q3 + 1.5*IQR]`, vía
+`clean.report_outliers_iqr()`) y se visualizan con boxplot en
+`01_eda_accidentes.ipynb` (`reports/figures/outliers_boxplot_*.png`). Qué
+hacer con cada uno (dejarlo, caparlo, investigarlo caso a caso) queda
+pendiente de decisión del equipo — no se decidió en esta pasada.
+
+**Hallazgos concretos (verificados corriendo el reporte, sin corregir nada):**
+
+| Archivo | Columna | Outliers (IQR) | Mín / Máx | Nota |
+|---|---|---|---|---|
+| `accidentes_2023.csv` + `accidentes_2024.csv` | `dias_dm` | 38 de 352 (10.8%) | 0 / 180 | — |
+| ídem | `dias_dm_total_indicador` | 36 de 329 (10.9%) | 0 / 904 | — |
+| ídem | `tiempo_experiencia_meses` | 24 de 194 (12.4%) | 0 / **2190** | 2190 meses ≈ 182 años — imposible como experiencia laboral, error de dato evidente |
+| `accidentes_historico_2012_2022.csv` | `dias_perdidos` | 110 de 914 (12.0%) | 0 / **6000** | 3 filas en exactamente 6000 — valor sospechoso de ser un tope/placeholder, no un dato real de días perdidos |
+| ídem | `dias_mas_ansi` | 111 de 913 (12.2%) | 0 / 6000 | Mismas 3 filas que `dias_perdidos` |
+| ídem | `nota_midot` | 3 de 14 (21.4%) | 28 / 75 | Muestra muy chica (14 no nulos de 1028) |
+| ídem | **`edad_anios`** | 0 (no marcado por IQR) | **0** / 63 | 4 filas con `edad_anios <= 0` — no es un outlier estadístico (no supera el umbral IQR), pero sí una violación de regla de negocio: edad 0 es imposible para un trabajador. El IQR no sustituye el criterio de negocio |
+| `accidentes_2025_2026.csv` | `dias_registrables` | 18 de 151 (11.9%) | 1 / 1140 | — |
+| ídem | `tiempo_empresa_meses` / `tiempo_empresa_anios` | 1 cada una | — | Un solo caso extremo cada una |
+
+**Decisión pendiente del equipo** (no se decide unilateralmente, mismo
+criterio que con los nulos >80%): ¿las 3 filas de `dias_perdidos`/`dias_mas_ansi`
+en 6000 y la fila de `tiempo_experiencia_meses` en 2190 se investigan caso a
+caso contra el Excel original, se capan a un máximo razonable, o se
+excluyen? ¿Las 4 filas con `edad_anios <= 0` se ponen en `NaN` (dato
+imposible) o se revisan contra el registro original primero?
+
 **Pendiente de decidir con el equipo** (no se decide unilateralmente):
 ¿qué hacer con las columnas que superan 80% de nulos en cualquiera de los 5
 archivos? Opciones a discutir: dejarlas tal cual para el EDA inicial, o
@@ -235,6 +266,7 @@ excluirlas de cualquier futuro dataset de modelado por baja cobertura.
 | 2026-09-12 | `turno` de `HISTORICO ACCIDENTES`, 32 filas con `"-"` | Recodificado a `NA` dentro de `normalize_turno()` | Mismo criterio ya aplicado en `sexo`/`gravedad`: `"-"` es un marcador de "no reportado", no una categoría informativa | Equipo, confirmado explícitamente |
 | 2026-09-12 | `area_responsabilidad`/`contrata` de `HISTORICO ACCIDENTES`, 8 celdas | Puestas en `NA` | Auditoría de PII: nombre completo de una persona (1 caso con RUC) filtrado por error hacia una columna que no es de identidad — ver sección "Auditoría de PII" | Equipo, a raíz de auditoría explícita solicitada |
 | 2026-09-12 | `descripcion_accidente` (4 fuentes) y `descripcion_incidente`/`danos_reales_o_potenciales` (incidentes) | Redactadas con `clean.redact_pii_libre()` | Auditoría de PII encontró nombres de personas y un DNI explícito en hasta 40.6% de las filas de algún archivo — ver sección "Auditoría de PII" para el detalle y limitaciones de la heurística | Equipo, a raíz de auditoría explícita solicitada |
+| 2026-09-12 | `tiempo_experiencia_meses` (2023/2024, máx. 2190), `dias_perdidos`/`dias_mas_ansi` (histórico, 3 filas en 6000), `edad_anios` (histórico, 4 filas ≤0) | **Ninguna corrección aplicada** — solo reportados (`clean.report_outliers_iqr()`) y visualizados (boxplot) | Son outliers/violaciones de regla de negocio evidentes, pero investigarlos contra el Excel original, caparlos o excluirlos es una decisión de limpieza que no se toma sin el equipo (mismo principio que con los nulos) | Sin decidir — pendiente, ver sección "Valores atípicos" |
 
 ## Anonimización
 
