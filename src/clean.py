@@ -32,6 +32,50 @@ def report_nulls(df: pd.DataFrame) -> pd.DataFrame:
     return reporte[reporte["n_nulos"] > 0].sort_values("n_nulos", ascending=False)
 
 
+def report_outliers_iqr(df: pd.DataFrame, columnas: list[str] | None = None) -> pd.DataFrame:
+    """
+    Reporta valores atípicos (outliers) por columna numérica, con la regla
+    del rango intercuartílico (IQR): un valor es atípico si cae fuera de
+    [Q1 - 1.5*IQR, Q3 + 1.5*IQR].
+
+    No elimina ni capa nada — mismo principio que report_nulls(): primero se
+    reporta, la decisión de qué hacer con cada outlier (dejarlo, caparlo,
+    revisarlo caso a caso) se toma después y se documenta en
+    reports/diccionario_datos.md.
+
+    columnas: columnas a evaluar; por defecto, todas las numéricas del
+    DataFrame.
+    """
+    if columnas is None:
+        columnas = df.select_dtypes(include="number").columns.tolist()
+
+    filas = []
+    for col in columnas:
+        serie = df[col].dropna()
+        if serie.empty:
+            continue
+        q1, q3 = serie.quantile([0.25, 0.75])
+        iqr = q3 - q1
+        limite_inf, limite_sup = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+        atipicos = serie[(serie < limite_inf) | (serie > limite_sup)]
+        filas.append({
+            "columna": col,
+            "n_outliers": len(atipicos),
+            "pct_outliers": round(len(atipicos) / len(serie) * 100, 2),
+            "limite_inferior": round(float(limite_inf), 2),
+            "limite_superior": round(float(limite_sup), 2),
+            "min": serie.min(),
+            "max": serie.max(),
+        })
+    if not filas:
+        return pd.DataFrame(
+            columns=["n_outliers", "pct_outliers", "limite_inferior", "limite_superior",
+                     "min", "max"]
+        )
+    reporte = pd.DataFrame(filas).set_index("columna")
+    return reporte[reporte["n_outliers"] > 0].sort_values("n_outliers", ascending=False)
+
+
 def anonymize_column(df: pd.DataFrame, column: str, salt: str = "") -> pd.DataFrame:
     """
     Reemplaza los valores de una columna sensible (nombres, DNI, legajos) por
