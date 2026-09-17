@@ -97,6 +97,7 @@ ESQUEMA_HISTORICO: tuple[Columna, ...] = (
     Columna("sexo", "category", ("historico",)),
     Columna("turno", "category", ("historico",)),
     Columna("experiencia_puesto", "object", ("historico",)),
+    Columna("experiencia_puesto_meses", "float64", ("historico",)),
     Columna("fecha_evento", "datetime64[ns]", ("historico",)),
     Columna("gravedad", "category", ("historico",)),
     Columna("descripcion_accidente", "str", ("historico",)),

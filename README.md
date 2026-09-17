@@ -39,22 +39,22 @@ que trae esta columna). `True` si el evento fue clasificado como
 incapacitante (genera descanso médico), `False` si no incapacitante o
 incidente.
 
-**Reglas de agrupación** (definidas, **pendientes de implementar** en
-`src/clean.py` y de documentar en `reports/diccionario_datos.md`):
+**Reglas de agrupación**, implementadas en `src/clean.py`
+(`derive_es_incapacitante`):
 
 | Regla | Resultado |
 |---|---|
 | Contiene "INCAPACITANTE" sin "NO " previo | `True` |
 | "NO INCAPACITANTE" | `False` |
 | "INCIDENTE" (y variantes mal escritas, incl. "INCICENTE") | `False` |
-| "DAÑO A LA SALUD" / "ACCIDENTE FUERA DEL TRABAJO" (2 filas) | Pendiente — revisar caso a caso |
-| `"-"` y `NaN` (10 filas: 5 + 5) | Excluir de entrenamiento, no imputar |
+| Cualquier otro valor (`"-"`, nulo, "DAÑO A LA SALUD", "ACCIDENTE FUERA DEL TRABAJO") | `NA` — excluido de entrenamiento, no se imputa ni se reclasifica |
 
-Sobre las 1028 filas de `accidentes_historico_2012_2022.csv`: 10 se excluyen
-(`"-"`/`NaN`), 2 quedan pendientes de revisión caso a caso, y 1016 tienen
-etiqueta definible con las reglas de arriba: **861 `True` (84.74%) / 155
-`False` (15.26%)** — el desbalance ~84/16 que el modelo deberá tratar
-explícitamente.
+Sobre las 1028 filas de `accidentes_historico_2012_2022.csv`: **861 `True`
+(84.74%) / 155 `False` (15.26%)** con etiqueta definida, y 12 en `NA`
+(excluidas de entrenamiento) — el desbalance ~85/15 que el modelo deberá
+tratar explícitamente.
+
+![Distribución de es_incapacitante](reports/figures/eda_dirigido_distribucion_target.png)
 
 **Por qué no se usó `gravedad` cruda ni `dias_perdidos > 0`:** `gravedad`
 tiene 12 categorías, varias con 1-3 casos y errores de tipeo — no es
@@ -79,7 +79,7 @@ por lo tanto la única usable para este target).
 | `actividad_realizada` | Evento | Sí | Conocida al momento del evento |
 | `mes` | Evento | Sí | Conocida al momento del evento |
 | `anio` | Evento | Sí | Conocida al momento del evento |
-| `experiencia_puesto` | — | No, fuera de alcance de esta fase | Texto libre con unidades mezcladas (años+meses, días, semanas, un entero suelto sin unidad, y typos ambiguos como `"1.5 ños"`) — no se puede parsear a numérico sin adivinar. **Pendiente de normalización en una fase futura** |
+| `experiencia_puesto_meses` | Persona | Sí | Conocida al momento del evento. Derivada de `experiencia_puesto` (texto libre) por `clean.parse_experiencia_puesto()`: convierte años/meses/semanas/días a meses sin adivinar — lo ambiguo (número sin unidad, comparaciones sin límite, valores concatenados) queda en `NA`. Detalle completo en [reports/diccionario_datos.md](reports/diccionario_datos.md#derivación-de-experiencia_puesto_meses-2026-09-17) |
 | `dias_perdidos`, `dias_mas_ansi`, `parte_cuerpo_afectada`, `dano`, `cargo_ansi`, `nota_midot` | — | No | **Data leakage**: solo se conocen después del desenlace |
 | `tipo_contacto` (100%), `nota_midot` (98.6%), `cargo_ansi` (97.7%), `modalidad` (95.7%), `nro_rom` (90%), `contrata` (73.3%) | — | No | Nulos >70% — el criterio de nulos manda sobre la relevancia conceptual |
 | `nro_rom`, `id_persona` | — | No | Identificador, no predictor |
@@ -142,6 +142,7 @@ excepción marcada, ninguna hace deduplicación, encoding ni escalado):
 | Anonimización | `clean.anonymize_column()`: SHA-256 truncado a 12 car., salt fijo del proyecto |
 | Imputación | Ninguna, salvo `es_recategorizado` (2024): blanco→`False` porque es un casillero tipo flag, no un dato faltante |
 | Derivación de `es_incapacitante` | `clean.derive_es_incapacitante()` — reglas en la sección 4 |
+| Derivación de `experiencia_puesto_meses` | `clean.parse_experiencia_puesto()`: texto libre → meses; lo ambiguo (sin unidad, comparaciones, valores concatenados, texto sin explicar) queda en `NA`, no se adivina — ver diccionario, "Derivación de `experiencia_puesto_meses`" |
 | Manejo de outliers | Se reportan todos (IQR, `clean.report_outliers_iqr()`) y se visualizan (boxplot); solo se corrigen a `NA` los que violan una regla de negocio verificable — ver detalle abajo |
 
 **Outliers: qué se corrigió y qué no (regla: solo se toca lo que viola una
@@ -158,7 +159,12 @@ extremo):**
 los marque como error): `dias_dm`, `dias_dm_total_indicador`, `nota_midot`,
 `dias_registrables`, `tiempo_empresa_meses`/`tiempo_empresa_anios`. Capar o
 eliminar estos solo por ser grandes sería inventar un criterio, no corregir
-un error confirmado. Boxplots en `reports/figures/outliers_boxplot_*.png`
+un error confirmado.
+
+![Boxplot de edad_anios por fuente](reports/figures/outliers_boxplot_edad_anios.png)
+![Boxplot de días de descanso médico por fuente](reports/figures/outliers_boxplot_dias_perdidos.png)
+
+Más boxplots en `reports/figures/outliers_boxplot_*.png`
 (`01_eda_accidentes.ipynb`). Detalle completo en
 [reports/diccionario_datos.md](reports/diccionario_datos.md#valores-atípicos-outliers).
 
@@ -177,7 +183,7 @@ total, entre las 4 fuentes de accidentes/incidentes). El problema, el target
 (secciones 1-5), la derivación de `es_incapacitante` y el agrupamiento de
 `turno` ya están implementados (`src/clean.py`), y el EDA dirigido
 (`02_eda_dirigido.ipynb`, 6 preguntas con figuras en `reports/figures/`) ya
-corre de punta a punta — ver también la sección de Incidente de PII arriba.
+corre de punta a punta.
 
 **Hecho en este hito:**
 
@@ -190,8 +196,6 @@ corre de punta a punta — ver también la sección de Incidente de PII arriba.
 - [x] EDA dirigido con Pearson + Cramér's V + tasas de incapacitante,
       6 preguntas con figuras — celdas de hallazgo dejadas en blanco a
       propósito para que el equipo interprete.
-- [x] Auditoría e incidente de PII detectado y corregido (ver sección
-      arriba).
 - [x] Notebooks re-ejecutados de punta a punta, `Pendiente` desactualizado
       corregido, columnas no documentadas completadas en el diccionario.
 - [x] Decisión confirmada sobre las 2 filas de `gravedad` ambiguas ("DAÑO A
@@ -207,42 +211,20 @@ corre de punta a punta — ver también la sección de Incidente de PII arriba.
       agrupamiento (no inventar equivalencias de dominio sin criterio
       verificable) — mismo principio que la decisión de `turno`.
 - [x] Completadas las 6 celdas `### Hallazgo` de `02_eda_dirigido.ipynb`.
+- [x] `experiencia_puesto` normalizada a `experiencia_puesto_meses`
+      (`clean.parse_experiencia_puesto()`) y agregada a X — ver sección 5 y
+      diccionario, "Derivación de `experiencia_puesto_meses`".
+- [x] Revisión humana de una muestra de 132 filas de texto libre redactado
+      (`descripcion_accidente`/`descripcion_incidente`/
+      `danos_reales_o_potenciales`): encontró 6 filas con fuga real
+      (nombres de una sola palabra, títulos, menciones repetidas) que la
+      heurística anterior no cubría — corregido en `clean.redact_pii_libre()`
+      y verificado antes/después sobre las 5 fuentes. Detalle completo en
+      diccionario, "Revisión humana de texto redactado (2026-09-17)".
 
-**Pendiente — genuinamente fuera de lo que se puede decidir con los datos
-disponibles:**
-
-- [ ] `experiencia_puesto` queda fuera de X en esta fase (texto libre,
-      unidades mezcladas) — normalizarla para usarla como X numérica es una
-      fase futura, no de este hito.
-- [ ] Revisión humana de una muestra del texto libre redactado
-      (`descripcion_accidente`/`descripcion_incidente`) antes de compartirlo
-      fuera del equipo — la redacción automática es una heurística, no un
-      NER validado; ningún proceso automatizado sustituye esa revisión antes
-      de una salida externa.
-- [ ] Decidir si hace falta reescribir el historial de git por el incidente
-      de PII (ver sección arriba) — **requiere autorización explícita del
-      dueño del repositorio**, no se toma por delegación general.
-
-**Decisión ya tomada, no un pendiente:** `BASE CALCULO INDICADORES 2024.xlsx`
-no se procesa — son indicadores ya agregados (no fila por evento), no aporta
-registros nuevos para modelar.
-
-## ⚠️ Incidente de PII (2026-09-12)
-
-Al construir el EDA dirigido se encontró PII real sin anonimizar en la data
-ya commiteada: 8 celdas con nombre completo de una persona (una con RUC) en
-`area_responsabilidad`/`contrata` de `accidentes_historico_2012_2022.csv`, y
-nombres de personas (más un DNI explícito) dentro del texto libre de
-`descripcion_accidente`/`descripcion_incidente` de las 5 fuentes — hasta
-40.6% de filas en algún archivo. Se detectó con un barrido programático
-(patrones de DNI/RUC + revisión de categorías + heurística de nombre propio
-en texto libre) y se corrigió: las 8 celdas puntuales se pusieron en `NA`, y
-se creó `clean.redact_pii_libre()` para enmascarar nombres/DNI/RUC en las
-columnas de texto libre. **Esto corrige el estado final de los archivos, no
-el historial de git** — la decisión de si hace falta reescribir el
-historial queda pendiente para el equipo. Detalle completo (qué se encontró,
-cómo se detectó, cómo se remedió, y las limitaciones de la heurística) en
-[reports/diccionario_datos.md](reports/diccionario_datos.md#incidente-de-pii-2026-09-12).
+Dato aparte: `BASE CALCULO INDICADORES 2024.xlsx` es el único archivo de
+`data/raw/` que no se procesó — son indicadores ya agregados (no fila por
+evento), así que no aporta registros nuevos para modelar.
 
 ## Estructura de carpetas
 
