@@ -176,51 +176,41 @@ Justificación completa de cada decisión en
 
 > **Fase 1: ingesta, EDA y limpieza — sin modelado aún.**
 
-Las 5 fuentes de `data/raw/` ya fueron auditadas; 4 están procesadas y
-anonimizadas en `data/processed/` (1567 accidentes + 340 incidentes en
-total, entre las 4 fuentes de accidentes/incidentes). El problema, el target
-(`es_incapacitante`) y las X candidatas ya están definidos con el equipo
-(secciones 1-5), la derivación de `es_incapacitante` y el agrupamiento de
-`turno` ya están implementados (`src/clean.py`), y el EDA dirigido
-(`02_eda_dirigido.ipynb`, 6 preguntas con figuras en `reports/figures/`) ya
-corre de punta a punta.
+Las 5 fuentes de `data/raw/` fueron auditadas; 4 están procesadas y
+anonimizadas en `data/processed/` (1567 accidentes + 340 incidentes). El
+problema, el target (`es_incapacitante`) y las X candidatas están definidos
+(secciones 1-5), y el EDA dirigido (`02_eda_dirigido.ipynb`, 6 preguntas con
+figuras en `reports/figures/`).
 
 **Hecho en este hito:**
 
-- [x] Derivación de `es_incapacitante` en `src/clean.py`
-      (`derive_es_incapacitante`), documentada en el diccionario.
-- [x] Sinónimos de `turno` agrupados (`normalize_turno()`), aprobado por el
-      equipo.
-- [x] `es_considerado`/`es_recategorizado`/`es_hard_stop`/`es_verificado`
-      retipadas a `boolean` nullable, alineadas con `schema.py`.
-- [x] EDA dirigido con Pearson + Cramér's V + tasas de incapacitante,
-      6 preguntas con figuras — celdas de hallazgo dejadas en blanco a
-      propósito para que el equipo interprete.
-- [x] Notebooks re-ejecutados de punta a punta, `Pendiente` desactualizado
-      corregido, columnas no documentadas completadas en el diccionario.
-- [x] Decisión confirmada sobre las 2 filas de `gravedad` ambiguas ("DAÑO A
-      LA SALUD" / "ACCIDENTE FUERA DEL TRABAJO"): quedan en `NA`, excluidas
-      de entrenamiento/evaluación — no se reclasifican ni se eliminan filas.
-- [x] Outliers que violan una regla de negocio verificable, corregidos a
-      `NA` (`edad_anios`, `tiempo_experiencia_meses`,
-      `dias_perdidos`/`dias_mas_ansi` — ver sección 8); el resto se deja
-      igual, documentado.
-- [x] Columnas con >80% de nulos: se decide dejarlas en `data/processed/`
-      sin eliminar en esta fase (ver diccionario, sección "Nulos detectados").
-- [x] `lugar`/`fuente_peligro`/`puesto_trabajo`: se decide diferir su
-      agrupamiento (no inventar equivalencias de dominio sin criterio
-      verificable) — mismo principio que la decisión de `turno`.
-- [x] Completadas las 6 celdas `### Hallazgo` de `02_eda_dirigido.ipynb`.
+*Target y variables predictoras*
+- [x] Derivación de `es_incapacitante` (`clean.derive_es_incapacitante`); las
+      2 filas ambiguas de `gravedad` ("DAÑO A LA SALUD" / "ACCIDENTE FUERA
+      DEL TRABAJO") quedan en `NA`, sin reclasificar ni eliminar.
 - [x] `experiencia_puesto` normalizada a `experiencia_puesto_meses`
-      (`clean.parse_experiencia_puesto()`) y agregada a X — ver sección 5 y
-      diccionario, "Derivación de `experiencia_puesto_meses`".
-- [x] Revisión humana de una muestra de 132 filas de texto libre redactado
-      (`descripcion_accidente`/`descripcion_incidente`/
-      `danos_reales_o_potenciales`): encontró 6 filas con fuga real
-      (nombres de una sola palabra, títulos, menciones repetidas) que la
-      heurística anterior no cubría — corregido en `clean.redact_pii_libre()`
-      y verificado antes/después sobre las 5 fuentes. Detalle completo en
-      diccionario, "Revisión humana de texto redactado (2026-09-17)".
+      (`clean.parse_experiencia_puesto`) y agregada a X.
+- [x] Sinónimos de `turno` agrupados (`normalize_turno`); se difiere el
+      agrupamiento de `lugar`/`fuente_peligro`/`puesto_trabajo` por falta de
+      criterio de dominio verificable.
+- [x] Columnas booleanas (`es_considerado`, `es_recategorizado`,
+      `es_hard_stop`, `es_verificado`) retipadas a `boolean` nullable.
+
+*Calidad de datos*
+- [x] Outliers con regla de negocio verificable corregidos a `NA`
+      (`edad_anios`, `tiempo_experiencia_meses`,
+      `dias_perdidos`/`dias_mas_ansi` — sección 8); el resto se documenta sin
+      modificar.
+- [x] Columnas con más de 80% de nulos se mantienen en `data/processed/` sin
+      eliminar en esta fase.
+- [x] Revisión humana de 132 filas de texto redactado detectó 6 fugas
+      residuales de PII; corregidas en `clean.redact_pii_libre()` y
+      verificadas sobre las 5 fuentes (detalle en el diccionario de datos).
+
+*EDA*
+- [x] EDA dirigido: 6 preguntas (Pearson, Cramér's V, tasas de
+      incapacitante) con hallazgos documentados.
+- [x] Notebooks ejectuados.
 
 Dato aparte: `BASE CALCULO INDICADORES 2024.xlsx` es el único archivo de
 `data/raw/` que no se procesó — son indicadores ya agregados (no fila por
