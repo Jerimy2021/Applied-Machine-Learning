@@ -11,7 +11,13 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.clean import anonymize_column, normalize_categorical, normalize_turno, redact_pii_libre
+from src.clean import (
+    anonymize_column,
+    normalize_categorical,
+    normalize_turno,
+    parse_experiencia_puesto,
+    redact_pii_libre,
+)
 from src.config import INTERIM_DIR, PROCESSED_DIR, RAW_DIR
 
 
@@ -383,12 +389,24 @@ def load_historico_accidentes() -> pd.DataFrame:
     df["descripcion_accidente"] = redact_pii_libre(df["descripcion_accidente"])
     df["turno"] = normalize_turno(df["turno"])
 
+    # experiencia_puesto es texto libre con unidades mezcladas (años, meses,
+    # semanas, días) — se deriva una columna numérica en meses, dejando en NA
+    # todo lo que no se puede convertir sin adivinar (ver docstring de la
+    # función). No se descarta la columna de texto original.
+    df["experiencia_puesto_meses"] = parse_experiencia_puesto(df["experiencia_puesto"])
+
     # Valores imposibles por regla de negocio, no umbral arbitrario. Se
     # marcan como NA, no se imputa ningún reemplazo. Ver diccionario_datos.md,
     # sección "Valores atípicos".
     df.loc[df["edad_anios"] <= 0, "edad_anios"] = pd.NA
     df.loc[df["dias_perdidos"] == 6000, "dias_perdidos"] = pd.NA
     df.loc[df["dias_mas_ansi"] == 6000, "dias_mas_ansi"] = pd.NA
+    # Mismo criterio que en tiempo_experiencia_meses (2023/2024): nadie tiene
+    # más experiencia que años de vida. Verificado: 0 filas violan esta regla
+    # en esta fuente (se deja el chequeo por consistencia con la misma regla
+    # ya aplicada en load_base_accidentes).
+    imposible_experiencia = (df["experiencia_puesto_meses"] / 12) > df["edad_anios"]
+    df.loc[imposible_experiencia, "experiencia_puesto_meses"] = pd.NA
 
     df["fuente_archivo"] = "historico_2012_2022"
     df = df[df["anio"] < 2023].reset_index(drop=True)

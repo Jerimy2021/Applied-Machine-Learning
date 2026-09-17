@@ -120,7 +120,8 @@ limpieza; el resto son análogas a sus contrapartes de `accidentes_2023/2024`.
 | `id_persona` | Igual método que en 2023/2024, hash de la columna `NOMBRE` (que en este archivo viene sola, no separada en apellidos/nombres). 54 filas (5.25%) quedan nulas: el Excel original no traía nombre en esas filas. |
 | `programa` | Categórica, sede/programa productivo (ej. `GALLETERA LIMA`, `COPSA`, `TEAL`, `BOLIVIA`, `DETERGENTES`). 20.7% nula. |
 | `lugar` | Categórica, sede física donde ocurrió el evento (ej. `COPSA`, `GALLETERA LIMA`, `NUTRICION ANIMAL TRUJILLO`). Distinta de `area_responsabilidad`. 6.0% nula. |
-| `experiencia_puesto` | Texto libre (`object`), sin transformación: mezcla formatos como `"7 años y 10 meses"`, `"3 años"`. **Calidad de dato**: al menos un valor observado (`"Accidente Incapacitante "`) no es una experiencia sino texto de otra columna, aparentemente mal ubicado en el Excel original — no se corrigió, se reporta tal cual. |
+| `experiencia_puesto` | Texto libre (`object`), se conserva sin transformación como viene del Excel original (mezcla formatos como `"7 años y 10 meses"`, `"3 años"`). Las 2 celdas mal pegadas ("Accidente Incapacitante...") ya se limpiaron — ver `_CELDAS_CONTAMINADAS_HISTORICO` arriba. |
+| `experiencia_puesto_meses` | Numérica (`float64`), derivada de `experiencia_puesto` por `clean.parse_experiencia_puesto()`. **Ahora es X del modelo** — ver detalle abajo. |
 | `dias_perdidos` | Numérica, días de descanso médico por la lesión. 11.1% nula. Análoga a `dias_dm` de 2023/2024. |
 | `dias_mas_ansi` | Numérica, días adicionales según cargo ANSI. 11.2% nula. Análoga a `dias_dm_total_indicador` de 2023/2024. |
 
@@ -274,6 +275,53 @@ o no de un dataset de modelado se toma en la fase de modelado, con el
 contexto de ese momento (ver README, sección 5, para las X ya descartadas
 del target actual por este mismo motivo).
 
+## Derivación de `experiencia_puesto_meses` (2026-09-17)
+
+`experiencia_puesto` (histórico) es texto libre con unidades mezcladas —
+años, meses, semanas, días, typos y algún valor con dos periodos distintos
+pegados. Convertirla directo a numérico obligaría a inventar una regla para
+cada caso ambiguo, así que se implementó `clean.parse_experiencia_puesto()`
+con un criterio explícito: **todo lo que se puede verificar se convierte a
+meses; todo lo que no, queda en `NA`, nunca se estima.**
+
+Se convierte:
+
+- Años (`x12`), meses (`x1`), semanas y días (aprox. 1 mes = 30 días —
+  conversión estándar documentada, no un dato inventado).
+- Typos reales encontrados en la data: `"ños"` (falta la "a" de "años"),
+  `"mese"` (falta la "s" de "meses"), `"DIAW"` (typo de "DIAS").
+- `"X unidad y medio"` (ej. "1 año y medio" → 18 meses).
+- Texto con aclaración entre paréntesis o después de `" en "` (ej. `"2 años
+  en el puesto (3 años y 2 meses en Alicorp)"`, `"4 meses en Alicorp"`): se
+  toma solo la cifra principal, se ignora la aclaración.
+
+Queda en `NA` (no se adivina) cuando:
+
+- Es `"-"` o vacío (38 filas) — mismo criterio que el resto del proyecto.
+- Es un número suelto sin unidad (ej. `"228"`, 1 fila) — no se puede saber
+  si son días, meses o años.
+- Es una comparación sin límite ("MENOS DE 1 AÑO", "MAYOR 15 AÑOS", 4 filas)
+  — no es un valor puntual verificable.
+- Trae varios valores concatenados con `"/"` o salto de línea (ej. `"1
+  SEMANA / 3 AÑOS"`, o dos periodos en labores distintas, 3 filas) — no hay
+  forma de saber cuál usar o si deben sumarse.
+- Sobra texto sin explicar tras extraer los números con unidad reconocida
+  (ej. el typo `"7eses"`, o texto de otra columna pegado por error como
+  `"LIMPEZA TÉCNICA"`, 2 filas) — se prefiere no convertir la fila completa
+  antes que descartar silenciosamente la parte no entendida.
+
+**Resultado verificado** sobre las 692 filas no nulas: 644 se convirtieron
+(93.1%), 48 quedaron en `NA` (revisadas una por una, ver lista completa en
+el docstring de `parse_experiencia_puesto`). Se aplicó además la misma regla
+de negocio ya usada en `tiempo_experiencia_meses` (2023/2024): nadie tiene
+más experiencia que años de vida (`experiencia_puesto_meses / 12 >
+edad_anios` → `NA`); verificado, 0 filas violan esta regla en esta fuente.
+
+`experiencia_puesto_meses` pasa a ser **X del modelo** (ver README, sección
+5) — `experiencia_puesto` (texto original) se conserva sin cambios como
+referencia. Implementado en `src/clean.py` (`parse_experiencia_puesto`) y
+`src/ingest.py` (`load_historico_accidentes`), declarado en `src/schema.py`.
+
 ## Bitácora de decisiones de limpieza
 
 | Fecha | Columna(s) / filas | Decisión | Justificación | Decidido por |
@@ -296,6 +344,9 @@ del target actual por este mismo motivo).
 | 2026-09-12 | `edad_anios` (histórico, 4 filas), `tiempo_experiencia_meses` (2024, 2 filas), `dias_perdidos`/`dias_mas_ansi` (histórico, 4 filas) | Corregidas a `NA` en `src/ingest.py`, sin imputar reemplazo | Cada una viola una regla de negocio verificable (edad ≤0 imposible; experiencia en años > edad imposible; 6000 repetido en filas no relacionadas es un valor de sistema, no un dato real) — no se tocó ningún otro outlier IQR sin esa verificación | Equipo, criterio: solo corregir violaciones de regla de negocio confirmadas, no todo extremo estadístico |
 | 2026-09-12 | Columnas con >80% de nulos en cualquiera de las 5 fuentes (`item`, `nro_rom`, `cargo_ansi`, `tipo_contacto`, `nota_midot`, `modalidad`, `horas_trabajadas_turno`, `es_verificado`, etc.) | Se quedan en `data/processed/` sin eliminar | En esta fase (EDA/limpieza, sin modelar) no se elimina ninguna columna del dataset — la decisión de qué X usar se toma en la fase de modelado, no antes. Se marcan como "no recomendadas como X por baja cobertura" en el diccionario, no se borran del CSV | Equipo, criterio: no restringir el dataset antes de que exista una necesidad de modelado concreta |
 | 2026-09-12 | `lugar`, `fuente_peligro`, `puesto_trabajo` (histórico, 344-371 categorías) | Se difiere el agrupamiento — no se fuerza ninguna regla | A diferencia de `turno` (sinónimos obvios de un mismo número/franja), agrupar estas 3 columnas requiere criterio de dominio de SST/planta (qué lugares o peligros son "lo mismo") que no está disponible — inventarlo sería una decisión de negocio no verificable, mismo motivo por el que no se unificó turno numerado con franja horaria | Equipo, mismo criterio que la decisión de `turno` |
+| 2026-09-17 | `experiencia_puesto` (histórico) | Se deriva `experiencia_puesto_meses` (`float64`) con `clean.parse_experiencia_puesto()`; se conserva la columna de texto original sin cambios | 644 de 692 valores no nulos (93.1%) se pudieron convertir a meses sin adivinar (años/meses/semanas/días + typos reales identificados); los 48 restantes (`"-"`, comparaciones sin límite, valores concatenados, texto sin explicar) quedan en `NA` — ver sección "Derivación de `experiencia_puesto_meses`" para el detalle completo. `experiencia_puesto_meses` pasa a ser X del modelo (README, sección 5) | Equipo |
+| 2026-09-17 | Decisión sobre incidente de PII (2026-09-12) | No se reescribe el historial de git | El incidente ya está resuelto en el estado actual de los datos; no se identificó una necesidad adicional que justifique reescribir el historial | Equipo |
+| 2026-09-17 | `redact_pii_libre()` (5 fuentes, columnas de texto libre) | Revisión humana de 132 filas encontró 6 con fuga real (nombres de una sola palabra, títulos, menciones repetidas); se extendió la función con 4 reglas nuevas + propagación dentro de la fila, verificado antes/después sobre ≈1993 filas (34 cambiaron) | El patrón anterior (2-4 palabras en Título-Caso) no cubría nombres de una palabra ni menciones repetidas por apellido solo — la fuga ya estaba pública en `origin/develop`. Ver sección "Revisión humana de texto redactado (2026-09-17)" para el detalle completo, incluida la limitación conocida que queda sin resolver (apellidos con conector en minúscula) | Equipo, a partir de revisión humana solicitada explícitamente |
 
 ## Anonimización
 
@@ -357,15 +408,6 @@ confirmar el alcance completo:
   etiquetados por `[DNI]`/`[RUC]`, y secuencias de 2-4 palabras en
   Título-Caso por `[NOMBRE]`.
 
-- Las 8 celdas puntuales de `area_responsabilidad`/`contrata` se pusieron en
-  `NA` en `src/ingest.py` (`_CELDAS_PII_HISTORICO`), mismo criterio que las
-  celdas mal pegadas ya documentadas arriba.
-- Se creó `clean.redact_pii_libre()`, aplicada a `descripcion_accidente` (en
-  las 4 fuentes que la tienen) y a `descripcion_incidente` /
-  `danos_reales_o_potenciales` (en incidentes): reemplaza DNI/RUC
-  etiquetados por `[DNI]`/`[RUC]`, y secuencias de 2-4 palabras en
-  Título-Caso por `[NOMBRE]`.
-
 **⚠️ Limitación explícita — es una heurística, no un NER validado:**
 
 - Puede enmascarar nombres de lugar/clínica/empresa que también están en
@@ -373,13 +415,54 @@ confirmar el alcance completo:
   prioriza no dejar pasar un nombre de persona sobre preservar esos
   términos — el texto queda menos legible pero más seguro.
 - Puede no detectar un nombre que no siga el patrón esperado: una sola
-  palabra suelta después de un nombre de 4 palabras ya enmascarado (ej.
-  "[NOMBRE] Jhon"), o nombres en minúscula.
-- Verificado tras aplicarla: 0 coincidencias reales de nombre/DNI/RUC
-  residuales en los 5 CSV (los únicos "positivos" del re-chequeo fueron 3
-  falsos positivos benignos: ceros de un timestamp, un nombre de
-  laboratorio, y un número de viaje interno — ninguno es PII).
-- **Sigue pendiente una revisión humana** de una muestra antes de compartir
-  estas columnas fuera del equipo (ej. en una presentación o un PDF
-  exportado) — esta redacción automática reduce el riesgo, no lo elimina
-  por completo.
+  palabra suelta después de un nombre ya enmascarado, o nombres en
+  minúscula.
+
+### Revisión humana de texto redactado (2026-09-17) — pendiente cerrado
+
+Se revisó a mano una muestra estratificada de 132 filas (12 con marcador de
+redacción + 10 sin marcador, por cada una de las 6 columnas de texto libre
+de las 5 fuentes) para confirmar si `redact_pii_libre()` dejaba pasar
+nombres reales. **Se encontraron 6 filas con fuga real** — nombres de una
+sola palabra o con abreviaturas que el patrón de 2-4 palabras no cubría
+(ej. `"el colaborador Carlos"`, `"el Sr. Muñoz"`, `"Denis (Accidentado)"`,
+`"Robinson Vilchez"` mencionado luego solo como `"Vilchez"`/`"Robinson"`).
+Esto **corrige la afirmación anterior** de esta sección ("0 coincidencias
+residuales") — ese re-chequeo previo no cubrió estos patrones. Las 5 fuentes
+procesadas ya estaban commiteadas y pusheadas a `origin/develop` (PR #7 y
+anteriores) — es decir, esta fuga estaba **públicamente expuesta en
+GitHub**, no era solo un problema local.
+
+**Corrección aplicada** en `clean.redact_pii_libre()` (`src/clean.py`), sin
+tocar `data/raw/`:
+
+| Regla agregada | Qué cubre |
+|---|---|
+| Secuencia base extendida de 2-4 a 2-6 palabras en Título-Caso | Nombres largos que el límite de 4 cortaba a la mitad (ej. "Pedro Phil Renato Bocanegra Colacci", 5 palabras) |
+| Título (`Sr./Sra./Srta./Ing./Dr./Dra.`) + nombre de una palabra | "Sr. Muñoz", "Sr. David" |
+| "colaborador/compañero/trabajador/operario \<Nombre\>" | "el colaborador Carlos", "el colaborador Pacaya CA" |
+| "\<Nombre\> (Accidentado)" | "Denis (Accidentado)" |
+| Propagación dentro de la misma fila: una palabra de un nombre ya identificado que reaparece suelta más adelante en el mismo texto también se enmascara | "Robinson Vilchez" al inicio → "Vilchez"/"Robinson" mencionados solos después, en la misma fila |
+| Se agregó la `ü`/`Ü` a las clases de caracteres (faltaba) | Nombres como "Agüero" quedaban cortados a la mitad ("[NOMBRE]üero") |
+
+Verificado antes/después sobre las 6 fuentes de texto libre (≈1993 filas no
+nulas): pasó de 430 a 450 filas con marcador de redacción — 34 filas
+cambiaron de resultado en total, revisadas una por una (no solo las 6
+originales) para confirmar que son fugas reales corregidas y no una
+sobre-corrección nueva. Los 5 CSV se regeneraron (`notebooks/00`, `01`, `02`
+re-ejecutados de punta a punta).
+
+**Limitación conocida que queda sin resolver** (documentada, no oculta):
+apellidos con conector en minúscula (ej. `"David de la Cruz"`) solo
+enmascaran la primera palabra (`"[NOMBRE] de la Cruz"`) — el conector
+minúscula rompe la secuencia de Título-Caso. No se agregó una regla para
+esto porque permitir conectores minúscula (`"de"`, `"la"`, `"los"`) dentro
+del patrón aumenta mucho el riesgo de fusionar frases genéricas no
+relacionadas (ej. `"Producción de Alicorp"`). Cerrar esto por completo
+requeriría un NER validado, no una heurística de regex — sigue siendo el
+límite explícito de este enfoque.
+
+**Decisión (2026-09-17):** con la corrección aplicada y verificada, el
+pendiente de revisión humana queda cerrado. No se reescribe el historial de
+git (ver arriba) — el commit que sube la corrección deja el estado actual
+limpio hacia adelante.
