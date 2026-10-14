@@ -1,468 +1,352 @@
 # Diccionario de datos
 
-Este documento registra, para cada columna final del dataset limpio, su
-definición y **toda decisión de limpieza aplicada** (imputación, eliminación,
-recodificación) junto con su justificación. Ninguna limpieza se aplica en
-`src/clean.py` / `src/ingest.py` sin quedar documentada aquí (ver reglas en
-CLAUDE.md).
+Define cada columna de `data/processed/` y registra toda decisión de
+limpieza (imputación, eliminación, recodificación) con su justificación,
+como exige `CLAUDE.md`. Ninguna limpieza se aplica en `src/` sin quedar
+documentada aquí primero.
 
-> **Estado:** las 5 fuentes de `data/raw/` ya fueron auditadas. 4 de ellas
-> tenían (o contenían una hoja con) registros fila-por-accidente/incidente y
-> ya están procesadas: `accidentes_2023.csv`, `accidentes_2024.csv`,
-> `accidentes_historico_2012_2022.csv` (2012-2022), `accidentes_2025_2026.csv`
-> e `incidentes_2025_2026.csv`. Solo `BASE CALCULO INDICADORES 2024.xlsx`
-> queda sin procesar: es un archivo de indicadores ya agregados (no fila por
-> evento), no aporta registros nuevos para entrenar un modelo.
-> Se decidió usar **toda la data limpia disponible** (sin muestrear un % fijo
-> por "confidencialidad") porque la confidencialidad ya se resuelve por fila
-> con `id_persona` anonimizado — reducir el número de filas no protege más a
-> nadie y sí reduce la calidad del futuro modelo.
+Las 5 fuentes de `data/raw/` fueron auditadas. Solo `BASE CALCULO
+INDICADORES 2024.xlsx` queda sin procesar: son indicadores ya agregados
+(no fila por evento), así que no aporta registros nuevos para modelar.
 
-## Fuentes crudas (`data/raw/`)
+No se usó un muestreo por confidencialidad: esta ya se resuelve por fila,
+con `id_persona` anonimizado (ver sección 6). Reducir filas no protegería
+más a nadie y sí perjudicaría la calidad del modelo.
 
-| Archivo | Descripción | Filas útiles | Columnas | Notas |
-|---|---|---|---|---|
-| `Base de Accidentes 2023 _ Total.xlsx` (hoja `Base`) | Registro de accidentes 2023, un accidente por fila | 107 de 306 | 40 | Las 199 filas restantes son residuo de formato de Excel (solo la columna `Sem` traía valor, todo lo demás vacío) — se descartaron en `ingest.load_base_accidentes("2023")`. |
-| `Base Accidentes 2024_Todo Alicorp.xlsx` (hoja `Base`) | Registro de accidentes 2024, un accidente por fila | 281 de 281 | 45 (+ 11 columnas `Unnamed` vacías descartadas) | Sin filas de residuo. Incluye 2 columnas booleanas (`Considerar`, `Recategorización`) que las bases 2023 no tienen. |
-| `BASE CALCULO INDICADORES 2024.xlsx` | Cálculo de indicadores agregados (hojas `INDICADORES`, `ACCIDENTES`, `HH`, `DÍAS SIN`, `Proyección`) | — | — | No es un registro fila-por-accidente; son tablas de indicadores ya agregados. No se procesó — no aporta filas nuevas para modelar. |
-| `Resultados SST 2023 v06final.xlsx` (hoja `HISTORICO ACCIDENTES`) | Tablero histórico multi-año con 42 hojas; la hoja `HISTORICO ACCIDENTES` sí es fila-por-accidente | 1028 (2012-2022) | 27 | Las demás 41 hojas son indicadores/agregados, no auditadas. Se excluyen filas con `anio >= 2023` para no duplicar `accidentes_2023.csv`. |
-| `Tablero de Accidentes e incidentes.xlsx` (hoja `2° Accidentes`) | Dashboard; esta hoja es fila-por-accidente, 2025-2026 | 151 | 29 (+ 14 columnas descartadas) | Encabezado real en la fila 2 (`header=1`). Varias columnas de seguimiento (cierre de investigación, difusión de lecciones aprendidas) traían códigos mixtos (`T1`, `T2`, `SI`/`NO` inconsistente) y se descartaron por no poder interpretarlas con confianza — ver bitácora. |
-| `Tablero de Accidentes e incidentes.xlsx` (hoja `1° Incidentes`) | Misma dashboard; hoja fila-por-incidente (no accidente), 2025-2026 | 340 | 9 | Hoja distinta a "2° Accidentes": son incidentes (casi-accidentes), no accidentes. No trae nombre/DNI de ninguna persona. |
-| `Tablero de Accidentes e incidentes.xlsx` (hojas `TABLERO`, `VISUAL`) | Resto del dashboard | — | — | Vistas/resúmenes visuales del mismo archivo, no registros nuevos. No procesadas. |
+## 1. Fuentes y archivos procesados
 
-## Salida procesada (`data/processed/`)
-
-| Archivo | Filas | Columnas | Generado por |
+| Archivo crudo (hoja) | Procesado como | Filas | Columnas |
 |---|---|---|---|
-| `accidentes_2023.csv` | 107 | 40 | `ingest.load_base_accidentes("2023")` + `ingest.save_processed(...)` |
-| `accidentes_2024.csv` | 281 | 45 | `ingest.load_base_accidentes("2024")` + `ingest.save_processed(...)` |
-| `accidentes_historico_2012_2022.csv` | 1028 | 27 | `ingest.load_historico_accidentes()` + `ingest.save_processed(...)` |
-| `accidentes_2025_2026.csv` | 151 | 29 | `ingest.load_accidentes_tablero()` + `ingest.save_processed(...)` |
-| `incidentes_2025_2026.csv` | 340 | 9 | `ingest.load_incidentes()` + `ingest.save_processed(...)` |
+| `Base de Accidentes 2023 _ Total.xlsx` (`Base`) | `accidentes_2023.csv` | 107 de 306 | 40 |
+| `Base Accidentes 2024_Todo Alicorp.xlsx` (`Base`) | `accidentes_2024.csv` | 281 | 45 |
+| `Resultados SST 2023 v06final.xlsx` (`HISTORICO ACCIDENTES`) | `accidentes_historico_2012_2022.csv` | 1028 (2012-2022) | 28 |
+| `Tablero de Accidentes e incidentes.xlsx` (`2° Accidentes`) | `accidentes_2025_2026.csv` | 151 | 29 |
+| `Tablero de Accidentes e incidentes.xlsx` (`1° Incidentes`) | `incidentes_2025_2026.csv` | 340 | 9 |
+| `BASE CALCULO INDICADORES 2024.xlsx` | No procesado | Indicadores agregados, sin registro fila por evento | |
 
-**Total de registros de accidentes disponibles: 1567** (107 + 281 + 1028 +
-151), más 340 incidentes en un archivo aparte (evento distinto: un incidente
-no es un accidente).
+Notas rápidas:
 
-Los 5 CSV ya están **anonimizados** (sin nombres/apellidos/DNI, con
-`id_persona` donde aplica) y son commiteables según la excepción de
-`.gitignore` (ver CONTRIBUTING.md). No se combinaron en un solo archivo
-porque sus esquemas no son idénticos entre fuentes (ver columnas exclusivas
-por fuente abajo y en `src/schema.py`) — se prefirió mantener trazabilidad
-por fuente (columna `fuente_archivo` en todos) antes que forzar un merge que
-pudiera perder información. Antes de entrenar un modelo, cada equipo deberá
-decidir explícitamente cómo unificar/alinear estos esquemas (ej. quedarse
-solo con las columnas comunes, o entrenar por separado).
+- En `Base de Accidentes 2023`, las 199 filas que se descartaron eran
+  residuo de formato de Excel (solo la columna `Sem` traía valor).
+- En `HISTORICO ACCIDENTES` se excluyen las filas con `anio >= 2023` para
+  no duplicar `accidentes_2023.csv` y `accidentes_2024.csv`.
+- En `2° Accidentes` el encabezado real está en la fila 2 del Excel
+  (`header=1`), y se descartaron 14 columnas de seguimiento con códigos
+  mixtos que no se pudieron interpretar con confianza (ver sección 7).
+- `1° Incidentes` no trae nombre, apellido ni DNI de ninguna persona.
 
-## Columnas del dataset limpio
+Los 5 CSV son commiteables (anonimizados, `id_persona` en vez de
+nombre/DNI). No se combinaron en un solo archivo porque sus esquemas no
+son idénticos entre fuentes; se mantiene trazabilidad por fuente con la
+columna `fuente_archivo`.
 
-Común a ambos años salvo que se indique lo contrario. Fechas parseadas con
-`errors="coerce"`: un valor no parseable queda `NaN`, no se inventa.
+## 2. Columnas del dataset
+
+Común a `accidentes_2023.csv` y `accidentes_2024.csv` salvo que se indique
+lo contrario. Fechas parseadas con `errors=coerce`: lo que no se puede
+parsear queda en `NA`, no se inventa.
 
 | Columna | Tipo | Descripción | Notas |
 |---|---|---|---|
-| `item` | float | Número de item/correlativo del registro original | Muchos nulos en 2023 (93%) — el Excel original no lo llenaba consistentemente |
-| `nro_rom` | str | Código interno de registro (ej. `ITD23107`) | No es dato personal, es un código de trámite interno |
-| `pais` | category | País de la sede | |
-| `sociedad` | category | Razón social | |
-| `predio` | category | Predio/sede física | |
-| `planta` | category | Planta | |
+| `item` | float | Correlativo del registro original | 93% nulo en 2023 |
+| `nro_rom` | str | Código interno de trámite (ej. `ITD23107`) | No es dato personal |
+| `pais`, `sociedad`, `predio`, `planta`, `direccion`, `area` | category | Ubicación/organización | |
 | `planta_sigma` | category | Código de planta (sistema Sigma) | Solo 2024 |
-| `direccion` | category | Dirección de responsabilidad/área gerencial | |
-| `area` | category | Área donde ocurrió el evento | |
-| `tipo_accidente`, `tipo_accidente_2`, `tipo_accidente_3` | category | Clasificación del tipo de accidente | Solo 2024 |
+| `tipo_accidente`, `tipo_accidente_2`, `tipo_accidente_3` | category | Clasificación del accidente | Solo 2024 |
 | `fecha_evento` | datetime64 | Fecha del accidente | |
-| `semana`, `dia`, `mes`, `anio` | float | Descomposición de la fecha, tal como venía en el Excel | Redundante con `fecha_evento`; se mantiene por si el Excel original tenía inconsistencias entre ambos |
-| `hora` | object (`datetime.time`) | Hora del accidente | |
+| `semana`, `dia`, `mes`, `anio` | float | Descomposición de la fecha | Redundante con `fecha_evento`, se mantiene por si el Excel traía inconsistencias entre ambas |
+| `hora` | object | Hora del accidente | |
 | `turno` | category | Turno de trabajo | |
-| `tipo_trabajador` | category | Tipo de trabajador (propio/tercero, etc.) | |
-| `empresa` | category | Empresa del trabajador | |
+| `tipo_trabajador`, `empresa` | category | Tipo de trabajador y empresa | |
 | `sexo` | category | Sexo del trabajador | |
 | `edad_anios` | float | Edad del trabajador | |
 | `puesto_trabajo` | category | Puesto de trabajo | |
-| `fecha_ingreso_labores` | datetime64 | Fecha de ingreso del trabajador | Muchos nulos (~43-90%) |
-| `descripcion_accidente` | str (texto libre) | Descripción narrativa del accidente | **Ver advertencia de confidencialidad abajo** |
-| `tipo_contacto` | category | Tipo de contacto/mecanismo del accidente | |
+| `fecha_ingreso_labores` | datetime64 | Fecha de ingreso | 43-90% nulo |
+| `descripcion_accidente` | str (texto libre) | Descripción narrativa | Redactada por PII, ver sección 6 |
+| `tipo_contacto` | category | Mecanismo del accidente | |
 | `parte_cuerpo_afectada`, `parte_cuerpo_afectada_2` | category | Parte del cuerpo afectada | |
 | `actividad_realizada` | category | Actividad que se realizaba | |
 | `proceso` | category | Proceso productivo | Solo 2023 |
-| `diagnostico_medico` | category | Diagnóstico médico | |
-| `lesion` | category | Tipo de lesión | |
+| `diagnostico_medico`, `lesion` | category | Diagnóstico y tipo de lesión | |
 | `dias_dm` | float | Días de descanso médico | |
-| `cargo_ansi` | category | Clasificación de cargo según norma ANSI | |
-| `dias_dm_total_indicador` | float | Días de DM para el indicador oficial | Valores como `"Por confirmar"` se convirtieron a `NaN` (no se inventó un número) |
+| `cargo_ansi` | category | Clasificación de cargo, norma ANSI | |
+| `dias_dm_total_indicador` | float | Días de DM para el indicador oficial | Valores no numéricos (ej. `Por confirmar`) pasan a `NA` |
 | `situacion_actual` | category | Situación actual del caso | |
-| `tiempo_experiencia_meses` | float | Experiencia del trabajador en meses | |
-| `puesto` | category | Puesto (columna adicional a `puesto_trabajo`) | Solo 2023 |
+| `tiempo_experiencia_meses` | float | Experiencia del trabajador, en meses | |
+| `puesto` | category | Puesto (adicional a `puesto_trabajo`) | Solo 2023 |
 | `antiguedad` | category | Antigüedad del trabajador | |
-| `fuente_peligro` | category | Fuente de peligro | |
-| `tipo_contrato` | category | Tipo de contrato | |
-| `poblacion` | float | Población/dotación asociada | Solo 2024 |
-| `es_considerado` | boolean | Si el caso se considera para el indicador oficial | Solo 2024. Nulo cuando el Excel no lo especificaba (no se asumió ni Sí ni No) |
-| `es_recategorizado` | bool | Si el caso fue recategorizado | Solo 2024. **Decisión:** el Excel original solo marcaba `SI` cuando aplicaba y dejaba en blanco el resto — se asumió blanco = `False` (no recategorizado), no `NaN`, porque es una columna tipo casillero/flag, no un dato que falte reportar |
-| `id_persona` | str | Hash SHA-256 (12 car.) de apellido paterno + apellido materno + nombres | Ver sección Anonimización |
-| `fuente_archivo` | str | `"2023"` o `"2024"`, para trazabilidad | |
+| `fuente_peligro`, `tipo_contrato` | category | Fuente de peligro y tipo de contrato | |
+| `poblacion` | float | Dotación asociada | Solo 2024 |
+| `es_considerado` | boolean | Si cuenta para el indicador oficial | Solo 2024. Nulo cuando el Excel no lo especificaba |
+| `es_recategorizado` | bool | Si fue recategorizado | Solo 2024. Blanco en el Excel se interpretó como `False` (es un casillero tipo flag, no un dato faltante) |
+| `id_persona` | str | Hash del trabajador, ver sección 6 | |
+| `fuente_archivo` | str | `2023` o `2024`, para trazabilidad | |
 
-## Columnas de las 3 fuentes adicionales
+### Columnas propias del histórico (`accidentes_historico_2012_2022.csv`)
 
-Esquemas declarados en `src/schema.py` (`ESQUEMA_HISTORICO`,
-`ESQUEMA_TABLERO_ACCIDENTES`, `ESQUEMA_INCIDENTES`). Solo se detallan aquí las
-columnas que no son evidentes por su nombre o que tuvieron alguna decisión de
-limpieza; el resto son análogas a sus contrapartes de `accidentes_2023/2024`.
-
-**`accidentes_historico_2012_2022.csv`** (hoja `HISTORICO ACCIDENTES`):
+Esquema completo en `src/schema.py` (`ESQUEMA_HISTORICO`). Solo se detallan
+las columnas que no son evidentes por su nombre.
 
 | Columna | Notas |
 |---|---|
-| `tipo_contacto` | **100% nula** — esta columna no existía en el Excel para el rango 2012-2022, se introdujo recién en 2023. No es un error, es que el dato no se recolectaba entonces. |
-| `gravedad` (`GG`), `dano` (`DAÑO`), `contrata`, `nota_midot`, `modalidad` | Específicas de este archivo, sin equivalente directo en 2023/2024 — no se intentó forzar un mapeo. |
-| `fecha_evento` | 85 de 1028 filas (8.3%) quedaron en `NaT`: el texto de fecha en el Excel original tenía errores de tipeo (ej. `"19/012/2018"` con mes inválido, `"08/11/20211"` con un dígito de más en el año, años a 2 dígitos). Se usó `errors="coerce"` — **no se adivinó ninguna fecha**, quedan como `NaT` y deben excluirse de cualquier análisis por fecha. |
-| `id_persona` | Igual método que en 2023/2024, hash de la columna `NOMBRE` (que en este archivo viene sola, no separada en apellidos/nombres). 54 filas (5.25%) quedan nulas: el Excel original no traía nombre en esas filas. |
-| `programa` | Categórica, sede/programa productivo (ej. `GALLETERA LIMA`, `COPSA`, `TEAL`, `BOLIVIA`, `DETERGENTES`). 20.7% nula. |
-| `lugar` | Categórica, sede física donde ocurrió el evento (ej. `COPSA`, `GALLETERA LIMA`, `NUTRICION ANIMAL TRUJILLO`). Distinta de `area_responsabilidad`. 6.0% nula. |
-| `experiencia_puesto` | Texto libre (`object`), se conserva sin transformación como viene del Excel original (mezcla formatos como `"7 años y 10 meses"`, `"3 años"`). Las 2 celdas mal pegadas ("Accidente Incapacitante...") ya se limpiaron — ver `_CELDAS_CONTAMINADAS_HISTORICO` arriba. |
-| `experiencia_puesto_meses` | Numérica (`float64`), derivada de `experiencia_puesto` por `clean.parse_experiencia_puesto()`. **Ahora es X del modelo** — ver detalle abajo. |
-| `dias_perdidos` | Numérica, días de descanso médico por la lesión. 11.1% nula. Análoga a `dias_dm` de 2023/2024. |
-| `dias_mas_ansi` | Numérica, días adicionales según cargo ANSI. 11.2% nula. Análoga a `dias_dm_total_indicador` de 2023/2024. |
+| `tipo_contacto` | 100% nula: esta columna no existía en el Excel antes de 2023 |
+| `gravedad`, `dano`, `contrata`, `nota_midot`, `modalidad` | Sin equivalente en 2023/2024, no se forzó un mapeo |
+| `fecha_evento` | 8.3% en `NaT` por errores de tipeo en el Excel original (meses o años inválidos). No se adivinó ninguna fecha |
+| `id_persona` | Hash de la columna `NOMBRE` (viene junta, no separada en apellidos). 5.25% nula: el Excel no traía nombre en esas filas |
+| `programa` | Sede o programa productivo (ej. `GALLETERA LIMA`, `COPSA`). 20.7% nula |
+| `lugar` | Sede física donde ocurrió el evento. Distinta de `area_responsabilidad`. 6.0% nula |
+| `experiencia_puesto` | Texto libre (ej. `7 años y 10 meses`), sin transformación. Ver `experiencia_puesto_meses` abajo |
+| `experiencia_puesto_meses` | Derivada de `experiencia_puesto`, X del modelo. Ver sección 4 |
+| `dias_perdidos`, `dias_mas_ansi` | Días de descanso médico; análogas a `dias_dm` / `dias_dm_total_indicador` de 2023/2024 |
 
-**`accidentes_2025_2026.csv`** (hoja `2° Accidentes`):
-
-| Columna | Notas |
-|---|---|
-| `es_hard_stop` | Única columna de seguimiento/checklist de la hoja que se conservó — sus valores eran `SI`/`SÍ`/`NO` limpios. Las demás (cierre de investigación, difusión de lecciones aprendidas, `¿Tiene ROM?`) se descartaron, ver bitácora. |
-| `dias_registrables`, `horas_trabajadas_turno`, `tiempo_empresa_meses`/`_anios` | Vienen ya numéricas en el Excel, sin transformación adicional más allá de coerción de tipo. |
-| `id_persona` | A diferencia de 2023/2024, aquí la fuente combina apellidos + nombre + **DNI** antes de hashear (el DNI también es PII y se descarta tras usarlo). |
-| `vicepresidencia` | Categórica (`SUPPLY CHAIN`, `OTRAS VICEPRESIDENCIAS`, `ADMINISTRACION`). 0.7% nula. |
-| `categoria` | Categórica, línea de negocio/dirección (ej. `HOME Y PERSONAL CARE`, `FARINACEOS`, `MOLINOS`). Sin nulos. |
-| `dia_semana` | Categórica, día de la semana del evento (`LUNES`...`DOMINGO`), redundante con `fecha_evento`. Sin nulos. |
-| `causa_basica`, `causa_principal` | Categóricas según metodología SCAT; texto largo y con variantes de redacción muy similares (ej. dos versiones de "ESTANDARES DE TRABAJO INADECUADOS..." que difieren solo en un espacio) — no se unificaron, quedan como categorías distintas. 49.0% y 3.3% nulas respectivamente. |
-| `causa_inmediata` | Categórica: `ACTO INSEGURO` / `CONDICION INSEGURA`. 3.3% nula. |
-| `trimestre` | Categórica (`T1`-`T4`), redundante con `fecha_evento`. Sin nulos. |
-
-**`incidentes_2025_2026.csv`** (hoja `1° Incidentes`):
+### Columnas propias de `accidentes_2025_2026.csv` (hoja `2° Accidentes`)
 
 | Columna | Notas |
 |---|---|
-| — | Esta hoja no trae nombre/apellido/DNI de ninguna persona — no requirió anonimización. Es la única de las 5 fuentes procesadas sin columna `id_persona`. |
-| `tipo_evento` | Categórica: mayoría `INCIDENTE` (201), `ALTO POTENCIAL` (82), `DANO MATERIAL` (44); el resto son ~10 categorías con 1-2 casos cada una (ej. `FUGA DE CLORO`, `AMAGO DE INCENDIO`), incluyendo una variante mal escrita (`INDICENTE`, 1 caso) no unificada con `INCIDENTE`. Sin nulos. |
-| `es_verificado` | Booleano `SI`/`NO` del Excel original; 96% nulo (la mayoría de incidentes no tenían este campo llenado). |
+| `es_hard_stop` | Única columna de seguimiento que se conservó (valores `SI`/`NO` limpios) |
+| `id_persona` | Combina apellidos, nombre y DNI antes de hashear |
+| `vicepresidencia`, `categoria` | Línea de negocio / dirección |
+| `dia_semana`, `trimestre` | Redundantes con `fecha_evento` |
+| `causa_basica`, `causa_principal`, `causa_inmediata` | Metodología SCAT. Variantes de redacción casi idénticas no se unificaron (quedan como categorías distintas) |
 
-## Variable objetivo: `es_incapacitante`
+### Columnas propias de `incidentes_2025_2026.csv` (hoja `1° Incidentes`)
 
-Booleana (`boolean` nullable), derivada de `gravedad` en
-`accidentes_historico_2012_2022.csv` por `clean.derive_es_incapacitante()`
-(única fuente con `gravedad`; las demás 4 fuentes no tienen esta columna, por
-lo tanto no aportan y para este target). Reglas acordadas con el equipo:
+Es la única de las 5 fuentes sin `id_persona`: no trae ningún dato de
+identidad. `tipo_evento` incluye una variante mal escrita (`INDICENTE`) que
+no se unificó con `INCIDENTE`. `es_verificado` es 96% nula.
+
+## 3. Variable objetivo: `es_incapacitante`
+
+Booleana, derivada de `gravedad` (única fuente que la trae) por
+`clean.derive_es_incapacitante()`:
 
 | Regla sobre `gravedad` | Resultado |
 |---|---|
-| Contiene "INCAPACITANTE" sin "NO " inmediatamente antes | `True` |
-| Contiene "NO INCAPACITANTE" | `False` |
-| Contiene "INCIDENTE" (incl. variante mal escrita "INCICENTE") | `False` |
-| Cualquier otro valor: `"-"`, nulo, "ACCIDENTE FUERA DEL TRABAJO", "DAÑO A LA SALUD" | `pd.NA` — no se imputa ni se adivina |
+| Contiene INCAPACITANTE sin NO inmediatamente antes | `True` |
+| Contiene NO INCAPACITANTE | `False` |
+| Contiene INCIDENTE (incluida la variante mal escrita INCICENTE) | `False` |
+| Cualquier otro valor (`-`, nulo, ACCIDENTE FUERA DEL TRABAJO, DAÑO A LA SALUD) | `NA`, no se imputa |
 
-**Decisión confirmada (2026-09-12):** los 2 casos "ACCIDENTE FUERA DEL
-TRABAJO" y "DAÑO A LA SALUD" se quedan en `pd.NA` (excluidos de
-entrenamiento/evaluación) — no se reclasifican a `True`/`False` ni se
-eliminan las filas del dataset. Ya no es un pendiente, es el comportamiento
-final de `derive_es_incapacitante()`.
+Sobre las 1028 filas del histórico: 861 `True`, 155 `False`, 12 en `NA`
+(excluidas de entrenamiento). `gravedad` tiene 12 categorías distintas
+(varias con 1-4 casos y errores de tipeo), por lo que no es entrenable sin
+esta derivación.
 
-Resultado sobre las 1028 filas: 861 `True`, 155 `False`, 12 `<NA>`
-(verificado corriendo la función). Las filas con `<NA>` deben excluirse de
-entrenamiento/evaluación, no imputarse. Sobre las 1016 filas con etiqueta
-definida (excluyendo los 12 `<NA>`): **861 `True` (84.74%) / 155 `False`
-(15.26%)** — el desbalance ~85/15 a tratar explícitamente en el modelo.
+![Distribución de es_incapacitante](figures/eda_dirigido_distribucion_target.png)
 
-**Por qué no se usó `gravedad` cruda ni `dias_perdidos > 0` como target:**
-`gravedad` tiene 15 categorías (varias con 0-4 casos y errores de tipeo,
-ver arriba) — no es entrenable así. `dias_perdidos > 0` da un desbalance
-peor (93.3% / 6.7% sobre las filas no nulas) y además tiene 11.1% de nulos.
+**La población usada para entrenar no es el histórico completo.** Entre
+2012 y 2018 el 100% de las filas con etiqueta son incapacitantes: el
+registro de casos no incapacitantes empieza recién en 2019. Por eso el
+modelo se entrena solo con 2019-2022 (564 filas, 72.5% / 27.5%). Detalle
+completo en `reports/estrategia_data_preparation.md`.
 
-## Nulos detectados
+## 4. Variables predictoras y su derivación
 
-**No se imputó ningún nulo en esta pasada** — quedan como `NaN`/`NaT` en
-`data/processed/`. Resumen de las columnas con más nulos (ver
-`clean.report_nulls(df)` para el detalle completo por archivo):
+Ver la tabla completa de X incluidas/excluidas en el README, sección 5.
+Aquí solo se documenta la derivación de las que no vienen directo del
+Excel.
 
-**`accidentes_2023.csv` (107 filas):**
+### `experiencia_puesto_meses`
 
-| Columna | % nulos | Decisión |
+`experiencia_puesto` es texto libre con unidades mezcladas (años, meses,
+semanas, días, errores de tipeo). `clean.parse_experiencia_puesto()`
+convierte a meses todo lo verificable y deja en `NA` lo ambiguo, sin
+adivinar:
+
+- Se convierte: años (x12), meses (x1), semanas y días (aprox. 1 mes = 30
+  días), la expresión `y medio` y errores de tipeo reales encontrados en
+  la data (`ños` por `años`, `mese` por `meses`, `DIAW` por `DIAS`).
+- Queda en `NA`: vacío o `-` (38 filas), un número suelto sin unidad (no
+  se puede saber si son días, meses o años), comparaciones sin límite como
+  `MENOS DE 1 AÑO`, valores concatenados con `/` o salto de línea, y texto
+  sobrante que no se puede explicar tras extraer la unidad reconocida.
+
+De 692 valores no nulos, 644 (93.1%) se convirtieron; los 48 restantes se
+revisaron uno por uno. Se aplicó la misma regla ya usada en 2023/2024:
+nadie tiene más experiencia que años de vida (0 filas la violan aquí).
+
+## 5. Valores faltantes
+
+No se imputa ningún nulo todavía: quedan como `NA`/`NaT` en
+`data/processed/`. Detalle completo por columna con `clean.report_nulls(df)`
+(notebook `00_inventario_fuentes`) y por año en `03_estadistica_descriptiva`.
+
+![Nulos: accidentes 2023](figures/nulos_accidentes_2023.png)
+![Nulos: accidentes 2024](figures/nulos_accidentes_2024.png)
+
+En el histórico, el % de nulos depende del año: `sexo` y
+`area_responsabilidad` pasan de casi completos a 95-100% nulos entre 2019
+y 2022. Esto es relevante para el modelo (ver sección 4 y la estrategia de
+data preparation).
+
+![Nulos por columna, histórico](figures/descriptiva_nulos_por_columna.png)
+![Nulos por año, histórico](figures/descriptiva_nulos_por_anio.png)
+![Nulos: accidentes 2025-2026](figures/nulos_accidentes_2025_2026.png)
+![Nulos: incidentes 2025-2026](figures/nulos_incidentes_2025_2026.png)
+
+Las columnas con más de 80% de nulos en cualquiera de los 5 archivos
+(`item`, `nro_rom`, `cargo_ansi`, `tipo_contacto`, `nota_midot`,
+`modalidad`, `horas_trabajadas_turno`, `es_verificado`, entre otras) se
+mantienen en `data/processed/` sin eliminar: en esta fase no se restringe
+el dataset. La decisión de excluirlas de un modelo se toma al definir X
+(ver README, sección 5).
+
+## 6. Valores atípicos (outliers)
+
+Se detectan con la regla del rango intercuartílico (IQR), sin eliminar ni
+capar nada automáticamente. Solo se corrige a `NA` lo que viola una regla
+de negocio verificable; un valor extremo no es, por sí solo, un error:
+
+| Corregido a `NA` | Regla de negocio | Filas |
 |---|---|---|
-| `item` | 93% | Sin decisión aún — probablemente no útil como feature, evaluar en EDA |
-| `nro_rom` | 92% | Sin decisión aún |
-| `fecha_ingreso_labores` | 90% | Sin decisión aún |
-| `tiempo_experiencia_meses`, `parte_cuerpo_afectada`, `actividad_realizada`, `dia`/`mes`/`anio`, `puesto`, `situacion_actual` | 84% | El Excel original solo llenaba estos campos para un subconjunto de registros — pendiente entender el criterio antes de decidir imputar/eliminar/dejar como está |
-| `cargo_ansi` | 83% | Pendiente |
-| `tipo_contrato` | 71% | Pendiente |
+| `edad_anios` <= 0 (histórico) | Una edad de 0 es imposible para un trabajador | 4 |
+| `tiempo_experiencia_meses` / 12 > `edad_anios` (2024) | Nadie tiene más años de experiencia que de vida | 2 |
+| `dias_perdidos` / `dias_mas_ansi` = 6000 (histórico) | Mismo valor repetido en accidentes no relacionados: más compatible con un tope del sistema de origen que con un dato real | 4 |
 
-**`accidentes_2024.csv` (281 filas):** nulos mucho más moderados (la mayoría
-de columnas bajo 10%); las más altas son `es_considerado` (69%, columna que
-el Excel original solo llena a veces) y `fecha_ingreso_labores` (43%).
+Sin corregir a propósito (extremos estadísticos sin regla de negocio que
+los marque como error): `dias_dm`, `dias_dm_total_indicador`, `nota_midot`,
+`dias_registrables`, `tiempo_empresa_meses`/`tiempo_empresa_anios`. Capar o
+eliminar estos solo por ser grandes sería inventar un criterio.
 
-**`accidentes_historico_2012_2022.csv` (1028 filas):** `tipo_contacto` 100%
-nulo (no existía en esa época, ver arriba), `nota_midot` 98.6%, `cargo_ansi`
-97.7%, `modalidad` 95.7%, `nro_rom` 90.0%, `contrata` 73.3%,
-`area_responsabilidad` 48.7%, `edad_anios` 37.45% (incluye 4 valores
-imposibles corregidos a `NaN`, ver sección "Valores atípicos"),
-`dias_perdidos` 11.38% y `dias_mas_ansi` 11.58% (ídem, incluyen valores en
-6000 corregidos).
+![Boxplot de edad_anios por fuente](figures/outliers_boxplot_edad_anios.png)
+![Boxplot de días de descanso médico por fuente](figures/outliers_boxplot_dias_perdidos.png)
+![Boxplot de tiempo_experiencia_meses (2023-2024)](figures/outliers_boxplot_tiempo_experiencia_meses.png)
 
-**`accidentes_2025_2026.csv` (151 filas):** `horas_trabajadas_turno` 98.7%,
-`es_hard_stop` 79.5%, `edad_anios` 77.5%, `tiempo_empresa_anios`/`_meses`
-~71%, `area` 66.9%, `nro_rom` 55.6%, `hora` 55.0%.
+**Pendiente de revisión con SST:** los valores `6000` que se pasaron a
+`NA` podrían no ser todos un error de digitación. `cargo_ansi` usa valores
+estándar (60, 75, 100, 135, 175, 200, 300, 400, 3000, 4500, 6000); uno de
+los casos corregidos es un accidente con gravedad `MORTAL` y
+`cargo_ansi = 6000`, lo que sugiere un dato real, no un placeholder. Los
+otros tres (sin `cargo_ansi` registrado) sí parecen un error de tipeo.
 
-**`incidentes_2025_2026.csv` (340 filas):** `es_verificado` 96.5%,
-`danos_reales_o_potenciales` y `fuente_peligro` 72.7% cada una, `empresa` y
-`descripcion_incidente` <1% (prácticamente completas).
+## 7. Privacidad: anonimización y PII
 
-## Valores atípicos (outliers)
+### Anonimización de identidad
 
-**Misma política que con los nulos: no se elimina ni se capa ningún outlier
-silenciosamente.** Se detectan con la regla del rango intercuartílico (IQR:
-atípico si cae fuera de `[Q1 - 1.5*IQR, Q3 + 1.5*IQR]`, vía
-`clean.report_outliers_iqr()`) y se visualizan con boxplot en
-`01_eda_accidentes.ipynb` (`reports/figures/outliers_boxplot_*.png`). Qué
-hacer con cada uno (dejarlo, caparlo, investigarlo caso a caso) queda
-pendiente de decisión del equipo — no se decidió en esta pasada.
-
-**Hallazgos concretos (verificados corriendo el reporte, sin corregir nada):**
-
-| Archivo | Columna | Outliers (IQR) | Mín / Máx | Nota |
-|---|---|---|---|---|
-| `accidentes_2023.csv` + `accidentes_2024.csv` | `dias_dm` | 38 de 352 (10.8%) | 0 / 180 | — |
-| ídem | `dias_dm_total_indicador` | 36 de 329 (10.9%) | 0 / 904 | — |
-| ídem | `tiempo_experiencia_meses` | 24 de 194 (12.4%), **2 corregidas** | 0 / 2190→`NaN` | Ya corregido (ver decisión abajo) |
-| `accidentes_historico_2012_2022.csv` | `dias_perdidos` | 110 de 914 (12.0%), **3 corregidas** | 0 / 6000→`NaN` | Ya corregido |
-| ídem | `dias_mas_ansi` | 111 de 913 (12.2%), **4 corregidas** | 0 / 6000→`NaN` | Ya corregido — 1 fila más de lo reportado antes (fila con `dias_perdidos=0` pero `dias_mas_ansi=6000`, encontrada al verificar ambas columnas juntas) |
-| ídem | `nota_midot` | 3 de 14 (21.4%) | 28 / 75 | Muestra muy chica (14 no nulos de 1028) — sin corregir, no hay regla de negocio clara para esta columna |
-| ídem | **`edad_anios`** | 0 (no marcado por IQR), **4 corregidas** | 0→`NaN` / 63 | Ya corregido (ver decisión abajo) |
-| `accidentes_2025_2026.csv` | `dias_registrables` | 18 de 151 (11.9%) | 1 / 1140 | Sin corregir — 1140 días (~3 años) es extremo pero no hay una regla de negocio verificable (a diferencia de `edad_anios`/`tiempo_experiencia_meses`) que lo marque como imposible |
-| ídem | `tiempo_empresa_meses` / `tiempo_empresa_anios` | 1 cada una | — | Sin corregir, mismo motivo |
-
-**Decisión tomada (2026-09-12):** se corrigen a `NA` (sin imputar ningún
-reemplazo) solo los valores que violan una **regla de negocio verificable**,
-no todo lo que el IQR marca como estadísticamente atípico — un valor
-extremo no es automáticamente un error:
-
-- `edad_anios <= 0` en `accidentes_historico_2012_2022.csv` (4 filas): una
-  edad de 0 es imposible para un trabajador.
-- `tiempo_experiencia_meses / 12 > edad_anios` en `accidentes_2024.csv`
-  (2 filas, ninguna en 2023): nadie puede tener más años de experiencia que
-  de vida — regla relativa a la propia fila, no un umbral fijo.
-- `dias_perdidos == 6000` y `dias_mas_ansi == 6000` en
-  `accidentes_historico_2012_2022.csv` (4 filas en total, no 3: se encontró
-  una fila adicional con `dias_perdidos=0` pero `dias_mas_ansi=6000`,
-  inconsistente entre sí): el mismo valor exacto repetido en filas de
-  accidentes distintos y no relacionados es más compatible con un
-  tope/placeholder del sistema de origen que con un dato real — no se
-  intentó adivinar el valor real, se marca como `NA`.
-
-**Se decide explícitamente NO tocar** el resto de los outliers IQR de la
-tabla (`dias_dm`, `dias_dm_total_indicador`, `nota_midot`,
-`dias_registrables`, `tiempo_empresa_meses/anios`): son estadísticamente
-extremos pero no violan ninguna regla de negocio verificable con la
-información disponible — capar o eliminar un valor solo por ser grande
-sería inventar un criterio, no corregir un error confirmado. Implementado en
-`src/ingest.py` (`load_base_accidentes`, `load_historico_accidentes`).
-
-**Decisión tomada (2026-09-12):** las columnas con >80% de nulos en
-cualquiera de los 5 archivos (`item`, `nro_rom`, `cargo_ansi`,
-`tipo_contacto`, `nota_midot`, `modalidad`, `horas_trabajadas_turno`,
-`es_verificado`, etc.) **se quedan en `data/processed/` sin eliminar** — en
-esta fase de EDA/limpieza no se restringe el dataset. Quedan marcadas aquí
-como "no recomendadas como X por baja cobertura"; la decisión de excluirlas
-o no de un dataset de modelado se toma en la fase de modelado, con el
-contexto de ese momento (ver README, sección 5, para las X ya descartadas
-del target actual por este mismo motivo).
-
-## Derivación de `experiencia_puesto_meses` (2026-09-17)
-
-`experiencia_puesto` (histórico) es texto libre con unidades mezcladas —
-años, meses, semanas, días, typos y algún valor con dos periodos distintos
-pegados. Convertirla directo a numérico obligaría a inventar una regla para
-cada caso ambiguo, así que se implementó `clean.parse_experiencia_puesto()`
-con un criterio explícito: **todo lo que se puede verificar se convierte a
-meses; todo lo que no, queda en `NA`, nunca se estima.**
-
-Se convierte:
-
-- Años (`x12`), meses (`x1`), semanas y días (aprox. 1 mes = 30 días —
-  conversión estándar documentada, no un dato inventado).
-- Typos reales encontrados en la data: `"ños"` (falta la "a" de "años"),
-  `"mese"` (falta la "s" de "meses"), `"DIAW"` (typo de "DIAS").
-- `"X unidad y medio"` (ej. "1 año y medio" → 18 meses).
-- Texto con aclaración entre paréntesis o después de `" en "` (ej. `"2 años
-  en el puesto (3 años y 2 meses en Alicorp)"`, `"4 meses en Alicorp"`): se
-  toma solo la cifra principal, se ignora la aclaración.
-
-Queda en `NA` (no se adivina) cuando:
-
-- Es `"-"` o vacío (38 filas) — mismo criterio que el resto del proyecto.
-- Es un número suelto sin unidad (ej. `"228"`, 1 fila) — no se puede saber
-  si son días, meses o años.
-- Es una comparación sin límite ("MENOS DE 1 AÑO", "MAYOR 15 AÑOS", 4 filas)
-  — no es un valor puntual verificable.
-- Trae varios valores concatenados con `"/"` o salto de línea (ej. `"1
-  SEMANA / 3 AÑOS"`, o dos periodos en labores distintas, 3 filas) — no hay
-  forma de saber cuál usar o si deben sumarse.
-- Sobra texto sin explicar tras extraer los números con unidad reconocida
-  (ej. el typo `"7eses"`, o texto de otra columna pegado por error como
-  `"LIMPEZA TÉCNICA"`, 2 filas) — se prefiere no convertir la fila completa
-  antes que descartar silenciosamente la parte no entendida.
-
-**Resultado verificado** sobre las 692 filas no nulas: 644 se convirtieron
-(93.1%), 48 quedaron en `NA` (revisadas una por una, ver lista completa en
-el docstring de `parse_experiencia_puesto`). Se aplicó además la misma regla
-de negocio ya usada en `tiempo_experiencia_meses` (2023/2024): nadie tiene
-más experiencia que años de vida (`experiencia_puesto_meses / 12 >
-edad_anios` → `NA`); verificado, 0 filas violan esta regla en esta fuente.
-
-`experiencia_puesto_meses` pasa a ser **X del modelo** (ver README, sección
-5) — `experiencia_puesto` (texto original) se conserva sin cambios como
-referencia. Implementado en `src/clean.py` (`parse_experiencia_puesto`) y
-`src/ingest.py` (`load_historico_accidentes`), declarado en `src/schema.py`.
-
-## Bitácora de decisiones de limpieza
-
-| Fecha | Columna(s) / filas | Decisión | Justificación | Decidido por |
-|---|---|---|---|---|
-| 2026-08-28 | Filas 107-305 de `Base de Accidentes 2023 _ Total.xlsx` | Eliminadas | 100% residuo de formato de Excel: solo la columna `Sem` traía valor arrastrado, cero datos reales en el resto de columnas | Claude Code, a pedido del equipo |
-| 2026-08-28 | Columnas `Unnamed: 46`-`56` de `Base Accidentes 2024_Todo Alicorp.xlsx` | Eliminadas | Columnas 100% vacías (artefacto de formato de Excel), salvo `Unnamed: 56` con un único valor suelto (`"CONTRATO TEMPORAL"`) que parece un dato mal ubicado — se descartó por no poder atribuirlo con certeza a una fila/columna real | Claude Code, a pedido del equipo |
-| 2026-08-28 | `dias_dm_total_indicador` (ambos años) | Coerción a numérico (`errors="coerce"`) | Valores como `"Por confirmar"` no son números; se convierten a `NaN` en vez de inventar un valor | Claude Code, a pedido del equipo |
-| 2026-08-28 | `es_recategorizado` (2024) | Blanco → `False` | Es una columna tipo casillero (solo marca `SI` cuando aplica); blanco se interpreta como "no aplica", no como dato faltante | Claude Code, a pedido del equipo |
-| 2026-08-28 | `APELLIDO PATERNO`, `APELLIDO MATERNO`, `NOMBRES` (ambos años) | Reemplazadas por `id_persona` (hash) y eliminadas del dataset | Dato personal — ver sección Anonimización | Claude Code, a pedido del equipo |
-| 2026-08-30 | Filas con `anio >= 2023` en hoja `HISTORICO ACCIDENTES` | Excluidas de `accidentes_historico_2012_2022.csv` | Ya están cubiertas por `accidentes_2023.csv`/`accidentes_2024.csv`; incluirlas de nuevo duplicaría accidentes | Claude Code, a pedido del equipo |
-| 2026-08-30 | `Fecha` de hoja `HISTORICO ACCIDENTES`, 85 filas | Coerción a `NaT` (`errors="coerce"`, `dayfirst=True`) | Texto de fecha mal escrito en el Excel original (mes/año inválido, dígitos de más o de menos) — no se pudo parsear con certeza; se prefirió `NaT` a adivinar la fecha | Claude Code, a pedido del equipo |
-| 2026-08-30 | Columnas `¿La Investigación está cerrada?`, `¿Tiene ROM?`, `¿Se difundieron las lecciones aprendidas?`, `¿Se difundió en el espacio diario?`, `T1`/`T1.1`/`T2`/`T2.1`, `DIAS SEGUROS`, columnas `Unnamed` de hoja `2° Accidentes` | Eliminadas | Traían códigos mixtos (contadores numéricos, `T1`/`T2`, `SI`/`NO` inconsistente) o eran artefactos de formato de Excel — no se pudo interpretar su significado con confianza sin preguntarle al equipo que las llena | Claude Code, a pedido del equipo |
-| 2026-08-30 | `APELLIDOS DEL ACCIENTADO`, `NOMBRE DEL ACCIDENTADO`, `DNI` de hoja `2° Accidentes` | Reemplazadas por `id_persona` (hash) y eliminadas del dataset | Dato personal (DNI incluido) — ver sección Anonimización | Claude Code, a pedido del equipo |
-| 2026-08-30 | Todas las columnas de accidentes/incidentes procesadas | No se aplicó ningún muestreo/recorte de filas por "confidencialidad" | Se confirmó con el equipo que la confidencialidad se resuelve por fila (anonimización de `id_persona`/DNI), no reduciendo la cantidad de filas — reducir filas solo perjudicaría la calidad del futuro modelo sin proteger más a nadie | Decisión del equipo, confirmada explícitamente |
-| 2026-09-12 | `turno` (fila 920) y `experiencia_puesto` (filas 12 y 36) de `HISTORICO ACCIDENTES` | Celda puesta en `NA`, resto de la fila conservado | Las 3 celdas traían el mismo texto que `GG` (gravedad) de su propia fila (ej. `"Accidente Incapacitante"`) — una celda mal pegada, no un valor propio de esa columna. Se verificó fila por fila que **no** es un corrimiento de columnas: el resto de cada fila (fecha, parte del cuerpo, año, mes, días perdidos, fuente de peligro, actividad) tiene valores normales para su propia columna. Se corrige solo la celda puntual, no se toca nada más de la fila | Equipo, confirmado con inspección fila por fila |
-| 2026-09-12 | `turno` de `HISTORICO ACCIDENTES` | Sinónimos agrupados con `clean.normalize_turno()`: `1RO`/`1`/`1ERO`/`1ER`/`1ER TURNO`→`TURNO_1`; `2DO`/`2`/`2NDO`/`2DO TURNO`/`2RO`→`TURNO_2`; `3RO`/`3`/`3ER`→`TURNO_3`; `MANANA`→`DIA`; `MADRUGADA`/`MEDIA NOCHE`→`NOCHE`. `DIA`/`TARDE`/`NOCHE` sin cambio | De 21 categorías (20 valores + `NaN`) a 7 (`TURNO_1`, `TURNO_2`, `TURNO_3`, `DIA`, `TARDE`, `NOCHE`, `NaN`). **No se unificó** el esquema numerado con el de franja horaria (ej. no se asumió turno 1 = DIA) porque sería inventar una equivalencia de negocio no verificable | Equipo, aprobado explícitamente tras revisar las 21 categorías con su conteo |
-| 2026-09-12 | `turno` de `HISTORICO ACCIDENTES`, 32 filas con `"-"` | Recodificado a `NA` dentro de `normalize_turno()` | Mismo criterio ya aplicado en `sexo`/`gravedad`: `"-"` es un marcador de "no reportado", no una categoría informativa | Equipo, confirmado explícitamente |
-| 2026-09-12 | `area_responsabilidad`/`contrata` de `HISTORICO ACCIDENTES`, 8 celdas | Puestas en `NA` | Auditoría de PII: nombre completo de una persona (1 caso con RUC) filtrado por error hacia una columna que no es de identidad — ver sección "Auditoría de PII" | Equipo, a raíz de auditoría explícita solicitada |
-| 2026-09-12 | `descripcion_accidente` (4 fuentes) y `descripcion_incidente`/`danos_reales_o_potenciales` (incidentes) | Redactadas con `clean.redact_pii_libre()` | Auditoría de PII encontró nombres de personas y un DNI explícito en hasta 40.6% de las filas de algún archivo — ver sección "Auditoría de PII" para el detalle y limitaciones de la heurística | Equipo, a raíz de auditoría explícita solicitada |
-| 2026-09-12 | `edad_anios` (histórico, 4 filas), `tiempo_experiencia_meses` (2024, 2 filas), `dias_perdidos`/`dias_mas_ansi` (histórico, 4 filas) | Corregidas a `NA` en `src/ingest.py`, sin imputar reemplazo | Cada una viola una regla de negocio verificable (edad ≤0 imposible; experiencia en años > edad imposible; 6000 repetido en filas no relacionadas es un valor de sistema, no un dato real) — no se tocó ningún otro outlier IQR sin esa verificación | Equipo, criterio: solo corregir violaciones de regla de negocio confirmadas, no todo extremo estadístico |
-| 2026-09-12 | Columnas con >80% de nulos en cualquiera de las 5 fuentes (`item`, `nro_rom`, `cargo_ansi`, `tipo_contacto`, `nota_midot`, `modalidad`, `horas_trabajadas_turno`, `es_verificado`, etc.) | Se quedan en `data/processed/` sin eliminar | En esta fase (EDA/limpieza, sin modelar) no se elimina ninguna columna del dataset — la decisión de qué X usar se toma en la fase de modelado, no antes. Se marcan como "no recomendadas como X por baja cobertura" en el diccionario, no se borran del CSV | Equipo, criterio: no restringir el dataset antes de que exista una necesidad de modelado concreta |
-| 2026-09-12 | `lugar`, `fuente_peligro`, `puesto_trabajo` (histórico, 344-371 categorías) | Se difiere el agrupamiento — no se fuerza ninguna regla | A diferencia de `turno` (sinónimos obvios de un mismo número/franja), agrupar estas 3 columnas requiere criterio de dominio de SST/planta (qué lugares o peligros son "lo mismo") que no está disponible — inventarlo sería una decisión de negocio no verificable, mismo motivo por el que no se unificó turno numerado con franja horaria | Equipo, mismo criterio que la decisión de `turno` |
-| 2026-09-17 | `experiencia_puesto` (histórico) | Se deriva `experiencia_puesto_meses` (`float64`) con `clean.parse_experiencia_puesto()`; se conserva la columna de texto original sin cambios | 644 de 692 valores no nulos (93.1%) se pudieron convertir a meses sin adivinar (años/meses/semanas/días + typos reales identificados); los 48 restantes (`"-"`, comparaciones sin límite, valores concatenados, texto sin explicar) quedan en `NA` — ver sección "Derivación de `experiencia_puesto_meses`" para el detalle completo. `experiencia_puesto_meses` pasa a ser X del modelo (README, sección 5) | Equipo |
-| 2026-09-17 | Decisión sobre incidente de PII (2026-09-12) | No se reescribe el historial de git | El incidente ya está resuelto en el estado actual de los datos; no se identificó una necesidad adicional que justifique reescribir el historial | Equipo |
-| 2026-09-17 | `redact_pii_libre()` (5 fuentes, columnas de texto libre) | Revisión humana de 132 filas encontró 6 con fuga real (nombres de una sola palabra, títulos, menciones repetidas); se extendió la función con 4 reglas nuevas + propagación dentro de la fila, verificado antes/después sobre ≈1993 filas (34 cambiaron) | El patrón anterior (2-4 palabras en Título-Caso) no cubría nombres de una palabra ni menciones repetidas por apellido solo — la fuga ya estaba pública en `origin/develop`. Ver sección "Revisión humana de texto redactado (2026-09-17)" para el detalle completo, incluida la limitación conocida que queda sin resolver (apellidos con conector en minúscula) | Equipo, a partir de revisión humana solicitada explícitamente |
-
-## Anonimización
-
-| Columna original | Transformación aplicada | Método |
+| Fuente | Columnas originales | Método |
 |---|---|---|
-| `APELLIDO PATERNO` + `APELLIDO MATERNO` + `NOMBRES` (2023/2024) | Reemplazadas por columna nueva `id_persona`; las 3 columnas originales se eliminan del dataset limpio | Hash SHA-256 con salt fijo del proyecto (`clean.anonymize_column`), truncado a 12 caracteres. El mismo trabajador siempre produce el mismo `id_persona`, para poder cruzar sus accidentes sin exponer el nombre. |
-| `NOMBRE` (hoja `HISTORICO ACCIDENTES`) | Reemplazada por `id_persona` | Mismo método (hash SHA-256, mismo salt) |
-| `APELLIDOS DEL ACCIENTADO` + `NOMBRE DEL ACCIDENTADO` + `DNI` (hoja `2° Accidentes`) | Reemplazadas por `id_persona`; las 3 columnas originales (DNI incluido) se eliminan del dataset limpio | Mismo método (hash SHA-256, mismo salt) |
+| Accidentes 2023/2024 | Apellido paterno, apellido materno, nombres | Hash SHA-256 (`clean.anonymize_column`), truncado a 12 caracteres, salt fijo del proyecto |
+| Histórico | Columna `NOMBRE` (sin separar) | Mismo método |
+| Accidentes 2025-2026 | Apellidos, nombre y DNI | Mismo método (el DNI se descarta tras usarlo) |
 
-**Nota:** el salt es el mismo (`"sst-alicorp"`) en las 3 fuentes, por lo que
-un mismo trabajador que aparece en más de una fuente con el mismo nombre
-producirá el mismo `id_persona` — permite cruzar accidentes de una persona
-entre fuentes sin exponer su identidad. La hoja `1° Incidentes` no tiene
-`id_persona` porque no trae ningún dato de identidad de personas.
+El mismo salt se usa en las 3 fuentes: un trabajador que aparece en más de
+una queda con el mismo `id_persona`, lo que permite cruzar sus accidentes
+sin exponer su identidad. Incidentes 2025-2026 no tiene `id_persona`
+porque no trae ningún dato de identidad.
 
-## Incidente de PII (2026-09-12)
+### Incidente de PII (2026-09-12)
 
-### Qué se encontró
+Una auditoría encontró PII sin anonimizar en dos lugares que no eran
+columnas de identidad: 8 celdas con nombre completo de una persona en
+`area_responsabilidad`/`contrata` del histórico, y nombres de personas
+(más un DNI) dentro del texto libre de `descripcion_accidente` e
+`descripcion_incidente`, en hasta 40.6% de las filas de alguna fuente.
+Esta data ya estaba en `develop` desde antes de la auditoría (PR #4): el
+incidente no fue introducido por este hito, se descubrió al construir el
+EDA dirigido.
 
-Una auditoría completa de las 5 fuentes procesadas encontró PII real sin
-anonimizar en dos lugares que no eran columnas de identidad:
+Se corrigió así: las 8 celdas puntuales pasaron a `NA`, y se creó
+`clean.redact_pii_libre()` para enmascarar nombres y DNI/RUC en las
+columnas de texto libre (reemplaza por `[NOMBRE]` o `[DNI]`/`[RUC]`).
 
-1. **`area_responsabilidad` y `contrata`** de `accidentes_historico_2012_2022.csv`:
-   8 celdas con nombre completo de una persona (en un caso junto a su RUC),
-   filtrado por error hacia una columna que no pasa por `anonymize_column()`.
-2. **`descripcion_accidente`** (accidentes_2023/2024/historico/2025_2026) y
-   **`descripcion_incidente`** (incidentes_2025_2026): texto libre con
-   nombres de trabajadores, supervisores, choferes e incluso un DNI
-   explícito, mencionados dentro de la narración del evento — hasta 40.6%
-   de las filas en algún archivo.
+**Es una heurística, no un NER validado.** Puede enmascarar nombres de
+lugar o empresa que también están en Título-Caso (se prioriza no dejar
+pasar un nombre real sobre preservar esos términos), y puede no detectar
+un nombre fuera del patrón esperado.
 
-Esta data ya estaba commiteada y pusheada a `develop` desde antes de esta
-auditoría (fuentes agregadas en el PR #4), es decir, el incidente no fue
-introducido por el trabajo de este hito — se descubrió al construir el EDA
-dirigido (`02_eda_dirigido.ipynb`), al revisar el detalle de la columna
-`area_responsabilidad` en una tabla de contingencia.
+### Revisión humana de la redacción (2026-09-17)
 
-### Cómo se detectó
+Se revisó a mano una muestra de 132 filas de texto redactado. Se
+encontraron 6 filas con fuga real (nombres de una sola palabra o con
+título, y menciones repetidas de una persona ya identificada en la misma
+fila), que el patrón original de 2 a 4 palabras en Título-Caso no cubría.
+Estas fuentes ya estaban públicas en GitHub, así que la corrección se
+priorizó.
 
-Barrido programático sobre las 5 fuentes procesadas, sin corregir nada hasta
-confirmar el alcance completo:
-1. Búsqueda de patrones de 8 dígitos (DNI) y 10-11 dígitos (RUC), literal y
-   junto a las palabras "DNI"/"RUC", en todas las columnas de texto.
-2. Revisión de las categorías de cada columna categórica (finitas, se pueden
-   inspeccionar a mano) buscando valores con estructura de nombre propio.
-3. Heurística de texto libre: secuencias de 2 a 4 palabras en Título-Caso en
-   `descripcion_accidente`/`descripcion_incidente`/`danos_reales_o_potenciales`,
-   con clasificación manual de cuáles son nombres reales vs. falsos positivos
-   (lugares, clínicas, empresas).
+Se amplió `redact_pii_libre()`: secuencias de hasta 6 palabras, título más
+un nombre (`Sr. Muñoz`), rol más un nombre (`el colaborador Carlos`), el
+patrón `Nombre (Accidentado)`, y propagación dentro de la misma fila
+(si `Robinson Vilchez` ya se enmascaró, una mención posterior solo como
+`Vilchez` también se enmascara). Verificado antes y después sobre las
+≈1993 filas de texto libre de las 5 fuentes: 34 cambiaron de resultado,
+revisadas una por una.
 
-### Cómo se remedió
+**Limitación conocida, sin resolver:** un apellido con conector en
+minúscula (ej. `David de la Cruz`) solo enmascara la primera palabra.
+Permitir conectores como `de`/`la`/`los` en el patrón aumentaría mucho el
+riesgo de fusionar frases genéricas no relacionadas. Cerrar esto por
+completo requiere un NER validado, no una heurística de regex.
 
-- Las 8 celdas puntuales de `area_responsabilidad`/`contrata` se pusieron en
-  `NA` en `src/ingest.py` (`_CELDAS_PII_HISTORICO`), mismo criterio que las
-  celdas mal pegadas ya documentadas arriba.
-- Se creó `clean.redact_pii_libre()`, aplicada a `descripcion_accidente` (en
-  las 4 fuentes que la tienen) y a `descripcion_incidente` /
-  `danos_reales_o_potenciales` (en incidentes): reemplaza DNI/RUC
-  etiquetados por `[DNI]`/`[RUC]`, y secuencias de 2-4 palabras en
-  Título-Caso por `[NOMBRE]`.
+No se reescribió el historial de git por este incidente: el commit con la
+corrección deja el estado actual limpio hacia adelante, y reescribir
+historial es una operación que exige coordinación de todo el equipo.
 
-**⚠️ Limitación explícita — es una heurística, no un NER validado:**
+## 8. Bitácora de decisiones
 
-- Puede enmascarar nombres de lugar/clínica/empresa que también están en
-  Título-Caso (falso positivo, ej. "Molino Santa Rosa" → `[NOMBRE]`). Se
-  prioriza no dejar pasar un nombre de persona sobre preservar esos
-  términos — el texto queda menos legible pero más seguro.
-- Puede no detectar un nombre que no siga el patrón esperado: una sola
-  palabra suelta después de un nombre ya enmascarado, o nombres en
-  minúscula.
+Todas las decisiones de esta sección fueron aprobadas por el equipo antes
+de implementarse en `src/`.
 
-### Revisión humana de texto redactado (2026-09-17) — pendiente cerrado
+### Limpieza estructural (2026-08-28 a 2026-08-30)
 
-Se revisó a mano una muestra estratificada de 132 filas (12 con marcador de
-redacción + 10 sin marcador, por cada una de las 6 columnas de texto libre
-de las 5 fuentes) para confirmar si `redact_pii_libre()` dejaba pasar
-nombres reales. **Se encontraron 6 filas con fuga real** — nombres de una
-sola palabra o con abreviaturas que el patrón de 2-4 palabras no cubría
-(ej. `"el colaborador Carlos"`, `"el Sr. Muñoz"`, `"Denis (Accidentado)"`,
-`"Robinson Vilchez"` mencionado luego solo como `"Vilchez"`/`"Robinson"`).
-Esto **corrige la afirmación anterior** de esta sección ("0 coincidencias
-residuales") — ese re-chequeo previo no cubrió estos patrones. Las 5 fuentes
-procesadas ya estaban commiteadas y pusheadas a `origin/develop` (PR #7 y
-anteriores) — es decir, esta fuga estaba **públicamente expuesta en
-GitHub**, no era solo un problema local.
+- Se eliminaron las 199 filas residuo de `Base de Accidentes 2023` y las
+  columnas `Unnamed` vacías de `Base Accidentes 2024`.
+- `dias_dm_total_indicador`: valores no numéricos (ej. `Por confirmar`)
+  pasan a `NA` por coerción, en vez de inventar un número.
+- `es_recategorizado` (2024): el blanco del Excel se interpretó como
+  `False` (casillero tipo flag), no como dato faltante.
+- Filas con `anio >= 2023` del histórico se excluyeron para no duplicar
+  `accidentes_2023.csv`/`accidentes_2024.csv`.
+- `Fecha` del histórico, 85 filas con error de tipeo, pasaron a `NaT` en
+  vez de adivinar la fecha.
+- Se eliminaron 18 columnas de seguimiento de `2° Accidentes` (cierre de
+  investigación, difusión de lecciones, contadores `T1`/`T2`) por traer
+  códigos mixtos que no se pudieron interpretar con confianza.
+- Se confirmó con el equipo no aplicar ningún muestreo de filas por
+  confidencialidad (ver introducción de este documento).
 
-**Corrección aplicada** en `clean.redact_pii_libre()` (`src/clean.py`), sin
-tocar `data/raw/`:
+### Anonimización
 
-| Regla agregada | Qué cubre |
-|---|---|
-| Secuencia base extendida de 2-4 a 2-6 palabras en Título-Caso | Nombres largos que el límite de 4 cortaba a la mitad (ej. "Pedro Phil Renato Bocanegra Colacci", 5 palabras) |
-| Título (`Sr./Sra./Srta./Ing./Dr./Dra.`) + nombre de una palabra | "Sr. Muñoz", "Sr. David" |
-| "colaborador/compañero/trabajador/operario \<Nombre\>" | "el colaborador Carlos", "el colaborador Pacaya CA" |
-| "\<Nombre\> (Accidentado)" | "Denis (Accidentado)" |
-| Propagación dentro de la misma fila: una palabra de un nombre ya identificado que reaparece suelta más adelante en el mismo texto también se enmascara | "Robinson Vilchez" al inicio → "Vilchez"/"Robinson" mencionados solos después, en la misma fila |
-| Se agregó la `ü`/`Ü` a las clases de caracteres (faltaba) | Nombres como "Agüero" quedaban cortados a la mitad ("[NOMBRE]üero") |
+- Apellidos, nombres y DNI (las 3 fuentes que los traen) se reemplazaron
+  por `id_persona` y se eliminaron del dataset limpio (sección 7).
 
-Verificado antes/después sobre las 6 fuentes de texto libre (≈1993 filas no
-nulas): pasó de 430 a 450 filas con marcador de redacción — 34 filas
-cambiaron de resultado en total, revisadas una por una (no solo las 6
-originales) para confirmar que son fugas reales corregidas y no una
-sobre-corrección nueva. Los 5 CSV se regeneraron (`notebooks/00`, `01`, `02`
-re-ejecutados de punta a punta).
+### Reglas de negocio sobre outliers (2026-09-12)
 
-**Limitación conocida que queda sin resolver** (documentada, no oculta):
-apellidos con conector en minúscula (ej. `"David de la Cruz"`) solo
-enmascaran la primera palabra (`"[NOMBRE] de la Cruz"`) — el conector
-minúscula rompe la secuencia de Título-Caso. No se agregó una regla para
-esto porque permitir conectores minúscula (`"de"`, `"la"`, `"los"`) dentro
-del patrón aumenta mucho el riesgo de fusionar frases genéricas no
-relacionadas (ej. `"Producción de Alicorp"`). Cerrar esto por completo
-requeriría un NER validado, no una heurística de regex — sigue siendo el
-límite explícito de este enfoque.
+- `turno` (fila 920) y `experiencia_puesto` (filas 12 y 36) del histórico:
+  3 celdas traían el mismo texto que `gravedad` de su propia fila (una
+  celda mal pegada en el Excel, confirmado fila por fila que no era un
+  corrimiento de columnas). Se corrigió solo la celda, no el resto de la
+  fila.
+- `turno` del histórico: sinónimos agrupados de 21 a 7 categorías
+  (`clean.normalize_turno()`). No se unificó el esquema numerado
+  (`TURNO_1/2/3`) con el de franja horaria (`DIA`/`TARDE`/`NOCHE`) porque
+  sería inventar una equivalencia de negocio no verificable. El marcador
+  `-` (32 filas) se recodificó a `NA`, mismo criterio que en `sexo`.
+- `edad_anios`, `tiempo_experiencia_meses`, `dias_perdidos`/`dias_mas_ansi`:
+  ver tabla de la sección 6.
+- Columnas con más de 80% de nulos: se mantienen en `data/processed/` sin
+  eliminar en esta fase (sección 5).
+- `lugar`, `fuente_peligro`, `puesto_trabajo` del histórico (344-371
+  categorías): se difiere su agrupamiento, mismo motivo que `turno`
+  (agruparlas requiere criterio de dominio de SST que no está disponible).
 
-**Decisión (2026-09-17):** con la corrección aplicada y verificada, el
-pendiente de revisión humana queda cerrado. No se reescribe el historial de
-git (ver arriba) — el commit que sube la corrección deja el estado actual
-limpio hacia adelante.
+### Variable objetivo y población de modelado
+
+- Las 2 filas ambiguas de `gravedad` (`ACCIDENTE FUERA DEL TRABAJO` y
+  `DAÑO A LA SALUD`) quedan en `NA`, sin reclasificar ni eliminar
+  (2026-09-12).
+- `experiencia_puesto_meses` pasa a ser X del modelo (2026-09-17, sección 4).
+- Población de entrenamiento: solo años 2019-2022, no el histórico
+  completo (2026-09-20, sección 3).
+- Se excluyen de X `experiencia_puesto_meses`, `sexo`, `area_responsabilidad`
+  y `anio`, porque en 2019-2022 su disponibilidad depende de la clase
+  objetivo; imputarlas haría que el modelo aprenda cómo se registró el
+  dato, no el riesgo real. Se mantiene `edad_anios` (45% nula) imputada
+  con la mediana de train (2026-09-20). Detalle completo en
+  `reports/estrategia_data_preparation.md`.
+
+### Privacidad (2026-09-12 a 2026-09-17)
+
+- Incidente de PII detectado y corregido; ver sección 7.
+- No se reescribe el historial de git por este incidente (2026-09-17).
+- `redact_pii_libre()` ampliada tras la revisión humana de 132 filas; ver
+  sección 7.

@@ -1,13 +1,13 @@
 # Análisis Predictivo de Accidentes SST
 
-Proyecto del curso de **Machine Learning Aplicado** — Ingeniería Industrial.
+Proyecto del curso de **Machine Learning Aplicado**, Ingeniería Industrial.
 
 ## 1. Problema central y contexto
 
 El área de SST registra los accidentes que ocurren, pero no puede anticipar
 cuáles van a derivar en días perdidos. Hoy, cuando se reporta un evento, el
 jefe de SST necesita decidir cómo priorizar la atención y qué eventos escalar
-a investigación a fondo — y esa decisión se toma por criterio del supervisor,
+a investigación a fondo, y esa decisión se toma por criterio del supervisor,
 sin evidencia histórica que la respalde.
 
 ## 2. Objetivo del proyecto (medible)
@@ -21,7 +21,7 @@ superando el baseline de predecir siempre la clase mayoritaria.
 **Supervisado, clasificación binaria.**
 
 - Es supervisado porque el histórico ya trae, en la columna `gravedad`, el
-  desenlace real observado de cada evento — no se busca estructura oculta en
+  desenlace real observado de cada evento: no se busca estructura oculta en
   datos sin etiqueta, se tiene un objetivo definido y se quiere predecirlo.
 - Es clasificación (no regresión) porque la variable objetivo es categórica
   con dos valores, no numérica continua.
@@ -29,7 +29,7 @@ superando el baseline de predecir siempre la clase mayoritaria.
   de `gravedad` en dos.
 - Implicancia: métricas de clasificación (accuracy, precision, recall, F1,
   AUC-ROC) y matriz de confusión. Dado el desbalance de clases, **accuracy
-  sola no sirve** — se prioriza recall y F1 sobre la clase minoritaria.
+  sola no sirve**: se prioriza recall y F1 sobre la clase minoritaria.
 
 ## 4. Variable objetivo (y): `es_incapacitante`
 
@@ -44,57 +44,61 @@ incidente.
 
 | Regla | Resultado |
 |---|---|
-| Contiene "INCAPACITANTE" sin "NO " previo | `True` |
-| "NO INCAPACITANTE" | `False` |
-| "INCIDENTE" (y variantes mal escritas, incl. "INCICENTE") | `False` |
-| Cualquier otro valor (`"-"`, nulo, "DAÑO A LA SALUD", "ACCIDENTE FUERA DEL TRABAJO") | `NA` — excluido de entrenamiento, no se imputa ni se reclasifica |
+| Contiene `INCAPACITANTE` sin `NO ` previo | `True` |
+| `NO INCAPACITANTE` | `False` |
+| `INCIDENTE` (y variantes mal escritas, incl. `INCICENTE`) | `False` |
+| Cualquier otro valor (`-`, nulo, `DAÑO A LA SALUD`, `ACCIDENTE FUERA DEL TRABAJO`) | `NA`, excluido de entrenamiento, no se imputa ni se reclasifica |
 
 Sobre las 1028 filas de `accidentes_historico_2012_2022.csv`: **861 `True`
 (84.74%) / 155 `False` (15.26%)** con etiqueta definida, y 12 en `NA`
-(excluidas de entrenamiento) — el desbalance ~85/15 que el modelo deberá
-tratar explícitamente.
+(excluidas de entrenamiento): el desbalance ~85/15 que el modelo deberá
+tratar explícitamente. Ese 85/15 mezcla dos épocas: entre 2012 y 2018 los 452
+registros son todos incapacitantes, y en **2019-2022** (población de
+entrenamiento) la proporción es 72.5% / 27.5%.
 
 ![Distribución de es_incapacitante](reports/figures/eda_dirigido_distribucion_target.png)
 
 **Por qué no se usó `gravedad` cruda ni `dias_perdidos > 0`:** `gravedad`
-tiene 12 categorías, varias con 1-3 casos y errores de tipeo — no es
+tiene 12 categorías, varias con 1-3 casos y errores de tipeo, no es
 entrenable así. `dias_perdidos > 0` da un desbalance peor (93/7) y además
 tiene 11% de nulos.
 
 ## 5. Variables predictoras (X)
 
 Solo sobre `accidentes_historico_2012_2022.csv` (única fuente con `gravedad`,
-por lo tanto la única usable para este target).
+por lo tanto la única usable para este target), **años 2019-2022** (564 filas con
+etiqueta: 409 incapacitantes / 155 no): antes de 2019 todos los registros son
+incapacitantes. Detalle en [reports/estrategia_data_preparation.md](reports/estrategia_data_preparation.md).
 
 | Columna | Grupo | Incluida | Motivo |
 |---|---|---|---|
-| `edad_anios` | Persona | Sí | Conocida al momento del evento |
-| `sexo` | Persona | Sí | Conocida al momento del evento |
+| `edad_anios` | Persona | Sí | Conocida al momento del evento. 45% nulo: se imputa con la mediana de train, sin indicador de nulo |
+| `sexo` | Persona | No | Disponibilidad ligada a la clase (33% con dato en incapacitantes vs. 91% en no incapacitantes) |
 | `puesto_trabajo` | Trabajo | Sí | Conocida al momento del evento |
 | `turno` | Trabajo | Sí | Conocida al momento del evento |
 | `programa` | Trabajo | Sí | Conocida al momento del evento |
 | `lugar` | Lugar | Sí | Conocida al momento del evento |
-| `area_responsabilidad` | Lugar | Sí | Conocida al momento del evento |
+| `area_responsabilidad` | Lugar | No | 87% nulo en 2019-2022 |
 | `fuente_peligro` | Evento | Sí | Conocida al momento del evento |
 | `actividad_realizada` | Evento | Sí | Conocida al momento del evento |
 | `mes` | Evento | Sí | Conocida al momento del evento |
-| `anio` | Evento | Sí | Conocida al momento del evento |
-| `experiencia_puesto_meses` | Persona | Sí | Conocida al momento del evento. Derivada de `experiencia_puesto` (texto libre) por `clean.parse_experiencia_puesto()`: convierte años/meses/semanas/días a meses sin adivinar — lo ambiguo (número sin unidad, comparaciones sin límite, valores concatenados) queda en `NA`. Detalle completo en [reports/diccionario_datos.md](reports/diccionario_datos.md#derivación-de-experiencia_puesto_meses-2026-09-17) |
-| `dias_perdidos`, `dias_mas_ansi`, `parte_cuerpo_afectada`, `dano`, `cargo_ansi`, `nota_midot` | — | No | **Data leakage**: solo se conocen después del desenlace |
-| `tipo_contacto` (100%), `nota_midot` (98.6%), `cargo_ansi` (97.7%), `modalidad` (95.7%), `nro_rom` (90%), `contrata` (73.3%) | — | No | Nulos >70% — el criterio de nulos manda sobre la relevancia conceptual |
-| `nro_rom`, `id_persona` | — | No | Identificador, no predictor |
-| `descripcion_accidente` | — | No, fuera de alcance de esta fase | Texto libre: requiere NLP (excede el curso) y puede contener nombres de trabajadores sin anonimizar |
+| `anio` | Evento | No | No hay no incapacitantes antes de 2019; evita que el modelo aprenda la época |
+| `experiencia_puesto_meses` | Persona | No | Disponibilidad ligada a la clase (82% con dato en incapacitantes vs. 6.5% en no incapacitantes). Derivada de `experiencia_puesto` por `clean.parse_experiencia_puesto()` ([detalle](reports/diccionario_datos.md#experiencia_puesto_meses)) |
+| `dias_perdidos`, `dias_mas_ansi`, `parte_cuerpo_afectada`, `dano`, `cargo_ansi`, `nota_midot` | N/A | No | **Data leakage**: solo se conocen después del desenlace |
+| `tipo_contacto` (100%), `nota_midot` (98.6%), `cargo_ansi` (97.7%), `modalidad` (95.7%), `nro_rom` (90%), `contrata` (73.3%) | N/A | No | Nulos >70%: el criterio de nulos manda sobre la relevancia conceptual |
+| `nro_rom`, `id_persona` | N/A | No | Identificador, no predictor |
+| `descripcion_accidente` | N/A | No, fuera de alcance de esta fase | Texto libre: requiere NLP (excede el curso) y puede contener nombres de trabajadores sin anonimizar |
 
 ## 6. Fuentes de datos
 
 | Archivo (hoja) | Shape crudo | Shape procesado | Aporte |
 |---|---|---|---|
-| `Base de Accidentes 2023 _ Total.xlsx` (`Base`) | (306, 41) | `accidentes_2023.csv` → (107, 40) | Accidentes 2023. No tiene `gravedad` — no se usa para el target actual |
-| `Base Accidentes 2024_Todo Alicorp.xlsx` (`Base`) | (281, 57) | `accidentes_2024.csv` → (281, 45) | Accidentes 2024. No tiene `gravedad` — no se usa para el target actual |
-| `Resultados SST 2023 v06final.xlsx` (`HISTORICO ACCIDENTES`) | (1143, 26) | `accidentes_historico_2012_2022.csv` → (1028, 27) | **Fuente usada para X e y** — única con `gravedad` |
-| `Tablero de Accidentes e incidentes.xlsx` (`2° Accidentes`) | (151, 44) | `accidentes_2025_2026.csv` → (151, 29) | Accidentes 2025-2026. No tiene `gravedad` — no se usa para el target actual |
+| `Base de Accidentes 2023 _ Total.xlsx` (`Base`) | (306, 41) | `accidentes_2023.csv` → (107, 40) | Accidentes 2023. No tiene `gravedad`, no se usa para el target actual |
+| `Base Accidentes 2024_Todo Alicorp.xlsx` (`Base`) | (281, 57) | `accidentes_2024.csv` → (281, 45) | Accidentes 2024. No tiene `gravedad`, no se usa para el target actual |
+| `Resultados SST 2023 v06final.xlsx` (`HISTORICO ACCIDENTES`) | (1143, 26) | `accidentes_historico_2012_2022.csv` → (1028, 28) | **Fuente usada para X e y**, única con `gravedad` |
+| `Tablero de Accidentes e incidentes.xlsx` (`2° Accidentes`) | (151, 44) | `accidentes_2025_2026.csv` → (151, 29) | Accidentes 2025-2026. No tiene `gravedad`, no se usa para el target actual |
 | `Tablero de Accidentes e incidentes.xlsx` (`1° Incidentes`) | (343, 8) | `incidentes_2025_2026.csv` → (340, 9) | Incidentes (evento distinto a accidente) 2025-2026. No tiene `gravedad` |
-| `BASE CALCULO INDICADORES 2024.xlsx` | — | No procesado | Indicadores ya agregados, sin registro fila-por-evento |
+| `BASE CALCULO INDICADORES 2024.xlsx` | N/A | No procesado | Indicadores ya agregados, sin registro fila-por-evento |
 
 Los 5 CSV procesados están anonimizados (`id_persona` en vez de nombre/DNI) y
 son commiteables. Detalle completo de columnas y decisiones de limpieza por
@@ -102,28 +106,30 @@ fuente en [reports/diccionario_datos.md](reports/diccionario_datos.md).
 
 ## 7. EDA
 
-**Lo aplicado hoy** (`notebooks/00_inventario_fuentes.ipynb` y
-`notebooks/01_eda_accidentes.ipynb`, ejecutados de punta a punta): inventario
-de las 5 fuentes crudas, reporte de nulos por columna
-(`clean.report_nulls`), distribución de accidentes por mes/año, top áreas
-con más accidentes, distribución por sexo — sobre `accidentes_2023`/`2024`,
-más una vista combinada de accidentes por año (2012-2026) usando solo las
-columnas comunes a las 4 fuentes de accidentes.
+| Etapa | Notebook | Qué cubre |
+|---|---|---|
+| Data understanding | `00_inventario_fuentes` | Hojas, dimensiones, tipos y reporte de nulos de las 5 fuentes |
+| Exploración general | `01_eda_accidentes` | Accidentes por mes/año, áreas y sexo (2023-2024); boxplots de outliers |
+| Estadística descriptiva y valores faltantes | `03_estadistica_descriptiva` | Histórico 2012-2022: numéricas (media, mediana, percentiles, asimetría), categóricas (frecuencias, dominante, cardinalidad), nulos por columna y por año |
+| EDA dirigido al target | `02_eda_dirigido` | 6 preguntas: distribución de `es_incapacitante`, correlación de Pearson, Cramér's V, tasa de incapacitantes por año y turno |
 
-**Hallazgos relevantes para la problemática (recall/priorización):**
-**PENDIENTE** — el EDA existente es descriptivo y se hizo antes de definir
-`y`; no tiene todavía hallazgos evaluados contra `es_incapacitante`.
+Principales hallazgos de `03_estadistica_descriptiva`:
 
-**Matriz de correlación:** **PENDIENTE** — no calculada aún (confirmado: no
-hay ninguna llamada a `.corr()` en `src/` ni en los notebooks). Plan
-acordado: Pearson entre las 3 columnas numéricas de X (`edad_anios`, `mes`,
-`anio` — `experiencia_puesto` queda fuera de X, ver sección 5) para detectar
-redundancia; Cramér's V + tablas de contingencia / tasa de incapacitantes por
-categoría para las columnas categóricas contra `y` (con nota de que en
-`lugar`/`fuente_peligro`/`puesto_trabajo`, de cardinalidad muy alta, el
-resultado es poco confiable por celdas con `n<5` — interpretar solo el orden
-de magnitud). El objetivo es descartar X redundantes, no medir importancia
-(eso lo dará el modelo en fase 2).
+- **Asimetría**: `experiencia_puesto_meses` (mediana 21 vs. media 61 meses) y
+  `dias_perdidos` (máximo 4500) tienen colas largas hacia valores altos.
+- **Nulos por año**: `sexo` pasa de ≤6% de nulos (2014-2019) a 96-100% en
+  2021-2022; `area_responsabilidad`, de ≤2% (2012-2018) a 77-100% desde 2019;
+  `programa` está vacío en 2012-2013.
+- **Cardinalidad**: `puesto_trabajo`, `lugar` y `fuente_peligro` tienen 344-371
+  categorías, cerca de 75% con un solo registro.
+- **Grafías duplicadas**: `SETIEMBRE`/`SEPTIEMBRE` en `mes`.
+
+![Distribuciones de las variables numéricas](reports/figures/descriptiva_histogramas_numericas.png)
+![Valores faltantes por año](reports/figures/descriptiva_nulos_por_anio.png)
+
+Los puntos a resolver en la preparación de datos están al final de
+`03_estadistica_descriptiva.ipynb`. Las decisiones de limpieza se registran en
+[reports/diccionario_datos.md](reports/diccionario_datos.md).
 
 ## 8. Preparación de datos
 
@@ -141,9 +147,9 @@ excepción marcada, ninguna hace deduplicación, encoding ni escalado):
 | Mapeo de booleanos | dict `_BOOL_MAP` (`SI`/`SÍ`→`True`, `NO`→`False`) vía `.map()` |
 | Anonimización | `clean.anonymize_column()`: SHA-256 truncado a 12 car., salt fijo del proyecto |
 | Imputación | Ninguna, salvo `es_recategorizado` (2024): blanco→`False` porque es un casillero tipo flag, no un dato faltante |
-| Derivación de `es_incapacitante` | `clean.derive_es_incapacitante()` — reglas en la sección 4 |
-| Derivación de `experiencia_puesto_meses` | `clean.parse_experiencia_puesto()`: texto libre → meses; lo ambiguo (sin unidad, comparaciones, valores concatenados, texto sin explicar) queda en `NA`, no se adivina — ver diccionario, "Derivación de `experiencia_puesto_meses`" |
-| Manejo de outliers | Se reportan todos (IQR, `clean.report_outliers_iqr()`) y se visualizan (boxplot); solo se corrigen a `NA` los que violan una regla de negocio verificable — ver detalle abajo |
+| Derivación de `es_incapacitante` | `clean.derive_es_incapacitante()`, reglas en la sección 4 |
+| Derivación de `experiencia_puesto_meses` | `clean.parse_experiencia_puesto()`: texto libre → meses; lo ambiguo (sin unidad, comparaciones, valores concatenados, texto sin explicar) queda en `NA`, no se adivina (ver [diccionario](reports/diccionario_datos.md#experiencia_puesto_meses)) |
+| Manejo de outliers | Se reportan todos (IQR, `clean.report_outliers_iqr()`) y se visualizan (boxplot); solo se corrigen a `NA` los que violan una regla de negocio verificable (ver detalle abajo) |
 
 **Outliers: qué se corrigió y qué no (regla: solo se toca lo que viola una
 regla de negocio verificable, nunca un valor solo por ser estadísticamente
@@ -153,7 +159,7 @@ extremo):**
 |---|---|
 | `edad_anios <= 0` (histórico, 4 filas) | Una edad de 0 es imposible para un trabajador |
 | `tiempo_experiencia_meses` donde `/12 > edad_anios` (2024, 2 filas) | Nadie tiene más años de experiencia que de vida |
-| `dias_perdidos`/`dias_mas_ansi == 6000` (histórico, 4 filas) | Mismo valor exacto repetido en accidentes no relacionados — más compatible con un tope/placeholder del sistema que con un dato real |
+| `dias_perdidos`/`dias_mas_ansi == 6000` (histórico, 4 filas) | Mismo valor exacto repetido en accidentes no relacionados: más compatible con un tope/placeholder del sistema que con un dato real |
 
 **Sin corregir a propósito** (extremos estadísticos sin regla de negocio que
 los marque como error): `dias_dm`, `dias_dm_total_indicador`, `nota_midot`,
@@ -166,15 +172,14 @@ un error confirmado.
 
 Más boxplots en `reports/figures/outliers_boxplot_*.png`
 (`01_eda_accidentes.ipynb`). Detalle completo en
-[reports/diccionario_datos.md](reports/diccionario_datos.md#valores-atípicos-outliers).
+[reports/diccionario_datos.md](reports/diccionario_datos.md#6-valores-atípicos-outliers).
 
-Justificación completa de cada decisión en
-[reports/diccionario_datos.md](reports/diccionario_datos.md), sección
-"Bitácora de decisiones de limpieza".
+Justificación completa de cada decisión en la sección *Bitácora de
+decisiones* de [reports/diccionario_datos.md](reports/diccionario_datos.md).
 
 ## 9. Estado actual y qué sigue
 
-> **Fase 1: ingesta, EDA y limpieza — sin modelado aún.**
+> **Fase 1: ingesta, EDA y limpieza, sin modelado aún.**
 
 Las 5 fuentes de `data/raw/` fueron auditadas; 4 están procesadas y
 anonimizadas en `data/processed/` (1567 accidentes + 340 incidentes). El
@@ -186,8 +191,8 @@ figuras en `reports/figures/`).
 
 *Target y variables predictoras*
 - [x] Derivación de `es_incapacitante` (`clean.derive_es_incapacitante`); las
-      2 filas ambiguas de `gravedad` ("DAÑO A LA SALUD" / "ACCIDENTE FUERA
-      DEL TRABAJO") quedan en `NA`, sin reclasificar ni eliminar.
+      2 filas ambiguas de `gravedad` (`DAÑO A LA SALUD` / `ACCIDENTE FUERA
+      DEL TRABAJO`) quedan en `NA`, sin reclasificar ni eliminar.
 - [x] `experiencia_puesto` normalizada a `experiencia_puesto_meses`
       (`clean.parse_experiencia_puesto`) y agregada a X.
 - [x] Sinónimos de `turno` agrupados (`normalize_turno`); se difiere el
@@ -199,7 +204,7 @@ figuras en `reports/figures/`).
 *Calidad de datos*
 - [x] Outliers con regla de negocio verificable corregidos a `NA`
       (`edad_anios`, `tiempo_experiencia_meses`,
-      `dias_perdidos`/`dias_mas_ansi` — sección 8); el resto se documenta sin
+      `dias_perdidos`/`dias_mas_ansi`, sección 8); el resto se documenta sin
       modificar.
 - [x] Columnas con más de 80% de nulos se mantienen en `data/processed/` sin
       eliminar en esta fase.
@@ -210,10 +215,21 @@ figuras en `reports/figures/`).
 *EDA*
 - [x] EDA dirigido: 6 preguntas (Pearson, Cramér's V, tasas de
       incapacitante) con hallazgos documentados.
+- [x] Estadística descriptiva, distribuciones y valores faltantes del
+      histórico (`03_estadistica_descriptiva`).
 - [x] Notebooks ejectuados.
 
+*Data preparation*
+- [x] Estrategia definida en
+      [reports/estrategia_data_preparation.md](reports/estrategia_data_preparation.md):
+      población 2019-2022, X final, nulos, duplicados, outliers, escalado,
+      encoding y partición 80/20 sin fuga de información.
+
+**Siguiente:** implementar esa estrategia en `src/` (limpieza, pipeline y
+partición reproducible) y generar el conjunto de train y test.
+
 Dato aparte: `BASE CALCULO INDICADORES 2024.xlsx` es el único archivo de
-`data/raw/` que no se procesó — son indicadores ya agregados (no fila por
+`data/raw/` que no se procesó, son indicadores ya agregados (no fila por
 evento), así que no aporta registros nuevos para modelar.
 
 ## Estructura de carpetas
@@ -226,7 +242,9 @@ evento), así que no aporta registros nuevos para modelar.
 │   └── processed/     # Data final, lista para EDA/modelado.
 ├── notebooks/
 │   ├── 00_inventario_fuentes.ipynb   # Inventario y primer vistazo a las fuentes crudas.
-│   └── 01_eda_accidentes.ipynb       # Análisis exploratorio de datos.
+│   ├── 01_eda_accidentes.ipynb       # Análisis exploratorio de datos (2023-2024).
+│   ├── 02_eda_dirigido.ipynb         # EDA dirigido a la variable objetivo.
+│   └── 03_estadistica_descriptiva.ipynb  # Estadística descriptiva y valores faltantes (histórico).
 ├── src/
 │   ├── config.py      # Rutas del proyecto y constantes (sin hardcodear rutas absolutas).
 │   ├── schema.py       # Definición del esquema de columnas (nombres, tipos, categorías).
@@ -293,7 +311,7 @@ La data en `data/` proviene de una empresa real y es **confidencial**:
   limpieza, guardado y anonimización en [CONTRIBUTING.md](CONTRIBUTING.md)
   antes de subir uno.
 - Antes de compartir cualquier salida (notebook, figura, reporte, `.csv`),
-  anonimizar nombres, DNI y legajos (hash o ID sintético —
+  anonimizar nombres, DNI y legajos (hash o ID sintético, con
   `clean.anonymize_column`).
 - **Checklist antes de cualquier `git add` / `git push`:**
 
