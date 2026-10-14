@@ -177,9 +177,51 @@ Más boxplots en `reports/figures/outliers_boxplot_*.png`
 Justificación completa de cada decisión en la sección *Bitácora de
 decisiones* de [reports/diccionario_datos.md](reports/diccionario_datos.md).
 
-## 9. Estado actual y qué sigue
+## 9. Modelado (Hito 2)
 
-> **Fase 1: ingesta, EDA y limpieza, sin modelado aún.**
+Implementa la estrategia de la sección 8 en `src/prepare.py` (población,
+X, recodificación) y `src/model.py` (pipeline, modelos, experimentación),
+sobre la partición de train y test de 451/113 filas definida ahí mismo.
+El notebook `04_modelado.ipynb` solo importa y muestra.
+
+**5 algoritmos de scikit-learn**, comparados con `RandomizedSearchCV`
+(40 combinaciones, validación cruzada de 5 pliegues agrupada por evento,
+solo en train): Regresión Logística, KNN, SVM (RBF), Random Forest y
+Gradient Boosting (`HistGradientBoostingClassifier`). 4 de los 5 superan
+el recall de 0.70 que fija la sección 2; KNN queda abajo (no soporta
+`class_weight`).
+
+![Comparación de 5 algoritmos en validación cruzada](reports/figures/modelado_comparacion_cv.png)
+
+**Experimentación:** se afinan con `GridSearchCV` los dos modelos más
+relevantes de la comparación (mayor recall y, si es distinto, mejor F1):
+SVM y Random Forest. El resultado en test cambia el panorama por
+completo.
+
+| Modelo | Recall CV | Recall test (IC 95%) | Precisión test | F1 test | AUC-ROC test |
+|---|---|---|---|---|---|
+| SVM (RBF) | 0.880 | 0.258 (0.14-0.43) | 1.000 | 0.411 | 0.792 |
+| Random Forest | 0.783 | 0.806 (0.64-0.91) | 0.694 | 0.746 | 0.889 |
+
+SVM lideraba la comparación en validación cruzada, pero se desploma en
+test: predice casi todo como incapacitante (acierta las 82 filas de esa
+clase, pero solo 8 de 31 no incapacitantes), un caso claro de sobreajuste
+a los pliegues de validación con tan pocos datos de la clase minoritaria.
+Random Forest se mantiene estable entre CV y test.
+
+![Curvas ROC de los dos finalistas en test](reports/figures/modelado_curvas_roc.png)
+
+**Modelo recomendado: Random Forest** (`max_depth=12`,
+`max_features=sqrt`, `min_samples_leaf=7`, `n_estimators=1000`). Cumple
+el objetivo de recall de la sección 2 con un balance razonable de
+precisión, y es consistente entre CV y test, a diferencia de SVM. Detalle
+completo, matrices de confusión y limitaciones (muestra chica, una sola
+partición, X sin `experiencia_puesto_meses`/`sexo`/`area_responsabilidad`)
+en `notebooks/04_modelado.ipynb`.
+
+## 10. Estado actual y qué sigue
+
+> **Hito 1 (ingesta, EDA y limpieza) e Hito 2 (modelado) completos.**
 
 Las 5 fuentes de `data/raw/` fueron auditadas; 4 están procesadas y
 anonimizadas en `data/processed/` (1567 accidentes + 340 incidentes). El
@@ -224,9 +266,21 @@ figuras en `reports/figures/`).
       [reports/estrategia_data_preparation.md](reports/estrategia_data_preparation.md):
       población 2019-2022, X final, nulos, duplicados, outliers, escalado,
       encoding y partición 80/20 sin fuga de información.
+- [x] Estrategia implementada en `src/prepare.py` y `src/model.py`
+      (pipeline de escalado/encoding ajustado solo con train).
 
-**Siguiente:** implementar esa estrategia en `src/` (limpieza, pipeline y
-partición reproducible) y generar el conjunto de train y test.
+*Modelado*
+- [x] 5 algoritmos comparados con `RandomizedSearchCV` y validación
+      cruzada agrupada por evento (sección 9).
+- [x] Experimentación: afinamiento con `GridSearchCV` de los 2 finalistas,
+      evaluación final en test con intervalo de confianza del recall.
+- [x] Modelo recomendado: Random Forest, recall 0.806 en test (supera el
+      objetivo de 0.70 de la sección 2).
+
+**Siguiente:** sumar el año 2024 al entrenamiento para tener más casos
+reales de la clase minoritaria, y repetir la partición train/test con
+varias semillas para reportar un rango de recall, no un solo número (ver
+limitaciones en `notebooks/04_modelado.ipynb`).
 
 Dato aparte: `BASE CALCULO INDICADORES 2024.xlsx` es el único archivo de
 `data/raw/` que no se procesó, son indicadores ya agregados (no fila por
