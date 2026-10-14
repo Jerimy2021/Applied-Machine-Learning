@@ -299,7 +299,7 @@ chore: actualizar .gitignore
 docs: documentar diccionario de datos
 ```
 
-## ⚠️ Confidencialidad de la data
+## Confidencialidad de la data
 
 La data en `data/` proviene de una empresa real y es **confidencial**:
 
