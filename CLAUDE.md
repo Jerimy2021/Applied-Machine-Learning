@@ -5,9 +5,6 @@ Curso de Machine Learning Aplicado — Ingeniería Industrial.
 Equipo con background industrial, NO de software. El código debe ser legible
 y comentado en español; los nombres de variables/funciones en inglés o snake_case.
 
-## Estado actual
-Fase 1: Ingesta, EDA y limpieza. NO se entrenan modelos todavía.
-
 ## Reglas duras
 - `data/raw/` es SOLO LECTURA. Jamás modificar ni sobrescribir un archivo ahí.
 - Ningún archivo de `data/` se commitea. Verificar `.gitignore` antes de `git add`.
