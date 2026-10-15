@@ -11,12 +11,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.stats import loguniform, norm, randint
+from sklearn.base import clone
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
-    ConfusionMatrixDisplay,
     RocCurveDisplay,
     confusion_matrix,
     f1_score,
@@ -310,13 +310,87 @@ def evaluar_en_test(pipeline, X_test: pd.DataFrame, y_test: pd.Series) -> dict:
     }
 
 
-def graficar_matriz_confusion(matriz, titulo: str = "Matriz de confusión (test)"):
-    fig, ax = plt.subplots(figsize=(4.5, 4))
-    ConfusionMatrixDisplay(matriz, display_labels=["No incapacitante", "Incapacitante"]).plot(
-        ax=ax, colorbar=False
-    )
+def evaluar_multisemilla(
+    pipeline_base, X: pd.DataFrame, y: pd.Series, grupos: pd.Series, semillas=range(10)
+) -> pd.DataFrame:
+    """
+    Reajusta `pipeline_base` (con los hiperparámetros ya elegidos, sin
+    volver a buscarlos) sobre una partición train/test distinta por cada
+    semilla, para reportar un rango de recall en vez de un solo número:
+    con 564 filas, una sola partición puede ser optimista o pesimista por
+    azar. Cada fila de la tabla devuelta es una partición distinta.
+    """
+    filas = []
+    for semilla in semillas:
+        cv = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=semilla)
+        idx_train, idx_test = next(cv.split(X, y, groups=grupos))
+        modelo = clone(pipeline_base)
+        modelo.fit(X.iloc[idx_train], y.iloc[idx_train])
+        resultado = evaluar_en_test(modelo, X.iloc[idx_test], y.iloc[idx_test])
+        filas.append({
+            "semilla": semilla,
+            "recall_minoritaria": resultado["recall_minoritaria"],
+            "precision_minoritaria": resultado["precision_minoritaria"],
+            "f1_minoritaria": resultado["f1_minoritaria"],
+            "roc_auc": resultado["roc_auc"],
+        })
+    return pd.DataFrame(filas)
+
+
+_ETIQUETAS_MATRIZ = ["No incapacitante", "Incapacitante"]
+
+
+def _dibujar_matriz_confusion(ax, matriz, titulo: str):
+    """
+    Dibuja una matriz de confusión en `ax` con el conteo y, debajo, el %
+    de esa fila (equivalente al recall de esa clase real): más clara que
+    solo el conteo para ver de un vistazo qué tan bien predice cada clase.
+    """
+    porcentajes_fila = matriz / matriz.sum(axis=1, keepdims=True) * 100
+    imagen = ax.imshow(porcentajes_fila, cmap="Blues", vmin=0, vmax=100)
+    for i in range(matriz.shape[0]):
+        for j in range(matriz.shape[1]):
+            color = "white" if porcentajes_fila[i, j] > 60 else "black"
+            ax.text(
+                j, i, f"{matriz[i, j]}\n{porcentajes_fila[i, j]:.0f}%",
+                ha="center", va="center", fontsize=13, color=color,
+            )
+    ax.set_xticks([0, 1])
+    ax.set_xticklabels(_ETIQUETAS_MATRIZ)
+    ax.set_yticks([0, 1])
+    ax.set_yticklabels(_ETIQUETAS_MATRIZ)
+    ax.set_xlabel("Predicho")
+    ax.set_ylabel("Real")
     ax.set_title(titulo)
+    return imagen
+
+
+def graficar_matriz_confusion(matriz, titulo: str = "Matriz de confusión (test)"):
+    """Matriz de confusión de un modelo, con conteo y % de cada fila (recall de esa clase)."""
+    fig, ax = plt.subplots(figsize=(5, 4.3))
+    imagen = _dibujar_matriz_confusion(ax, matriz, titulo)
+    fig.colorbar(imagen, ax=ax, label="% de la fila (recall de esa clase)")
     fig.tight_layout()
+    return fig
+
+
+def graficar_matrices_confusion_comparadas(resultados: dict):
+    """
+    Matrices de confusión de varios modelos lado a lado (mismo criterio de
+    `graficar_matriz_confusion`), para comparar de un vistazo en una sola
+    imagen en vez de una por modelo. `resultados` es el diccionario que
+    devuelve `evaluar_en_test()` para cada modelo.
+    """
+    nombres = list(resultados.keys())
+    fig, ejes = plt.subplots(
+        1, len(nombres), figsize=(5.6 * len(nombres), 4.3), constrained_layout=True
+    )
+    ejes = np.atleast_1d(ejes)
+    imagen = None
+    for ax, nombre in zip(ejes, nombres):
+        imagen = _dibujar_matriz_confusion(ax, resultados[nombre]["matriz_confusion"], nombre)
+    fig.suptitle("Matrices de confusión en test")
+    fig.colorbar(imagen, ax=list(ejes), label="% de la fila (recall de esa clase)", shrink=0.85)
     return fig
 
 

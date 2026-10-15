@@ -209,82 +209,34 @@ clase, pero solo 8 de 31 no incapacitantes), un caso claro de sobreajuste
 a los pliegues de validación con tan pocos datos de la clase minoritaria.
 Random Forest se mantiene estable entre CV y test.
 
+![Matrices de confusión de los dos finalistas en test](reports/figures/modelado_matrices_confusion.png)
 ![Curvas ROC de los dos finalistas en test](reports/figures/modelado_curvas_roc.png)
 
 **Modelo recomendado: Random Forest** (`max_depth=12`,
 `max_features=sqrt`, `min_samples_leaf=7`, `n_estimators=1000`). Cumple
 el objetivo de recall de la sección 2 con un balance razonable de
-precisión, y es consistente entre CV y test, a diferencia de SVM. Detalle
-completo, matrices de confusión y limitaciones (muestra chica, una sola
-partición, X sin `experiencia_puesto_meses`/`sexo`/`area_responsabilidad`)
-en `notebooks/04_modelado.ipynb`.
+precisión, y es consistente entre CV y test, a diferencia de SVM.
 
-## 10. Estado actual y qué sigue
+**Validación con varias semillas:** una sola partición train/test puede
+ser optimista o pesimista por azar con solo 564 filas. Reajustando el
+mismo Random Forest (mismos hiperparámetros) sobre 10 particiones
+distintas, el recall va de 0.710 a 0.968 (media 0.813, desviación 0.080):
+las 10 superan el 0.70 de la sección 2, el modelo no depende de haber
+tenido suerte con la partición del notebook.
 
-> **Hito 1 (ingesta, EDA y limpieza) e Hito 2 (modelado) completos.**
+**Experimento adicional: sumar 2024.** `accidentes_2024.csv` no tiene
+`gravedad`, así que se probó usando `dias_dm > 0` como proxy de
+`es_incapacitante` (verificado para 2019-2022: coincide con la etiqueta
+real en 458 de 459 filas, pero no confirmado por SST para esta fuente
+específica). Con esa población combinada (828 filas, mejor balanceada,
+59.3%/40.7%), Random Forest reafinado da un recall de 0.868 en test (IC
+95%: 0.767-0.929) y, en 10 semillas, un rango de 0.806 a 0.882: mejor y
+más estable que con 2019-2022 solo. **No reemplaza la recomendación
+oficial** hasta que SST confirme el supuesto del proxy.
 
-Las 5 fuentes de `data/raw/` fueron auditadas; 4 están procesadas y
-anonimizadas en `data/processed/` (1567 accidentes + 340 incidentes). El
-problema, el target (`es_incapacitante`) y las X candidatas están definidos
-(secciones 1-5), y el EDA dirigido (`02_eda_dirigido.ipynb`, 6 preguntas con
-figuras en `reports/figures/`).
-
-**Hecho en este hito:**
-
-*Target y variables predictoras*
-- [x] Derivación de `es_incapacitante` (`clean.derive_es_incapacitante`); las
-      2 filas ambiguas de `gravedad` (`DAÑO A LA SALUD` / `ACCIDENTE FUERA
-      DEL TRABAJO`) quedan en `NA`, sin reclasificar ni eliminar.
-- [x] `experiencia_puesto` normalizada a `experiencia_puesto_meses`
-      (`clean.parse_experiencia_puesto`) y agregada a X.
-- [x] Sinónimos de `turno` agrupados (`normalize_turno`); se difiere el
-      agrupamiento de `lugar`/`fuente_peligro`/`puesto_trabajo` por falta de
-      criterio de dominio verificable.
-- [x] Columnas booleanas (`es_considerado`, `es_recategorizado`,
-      `es_hard_stop`, `es_verificado`) retipadas a `boolean` nullable.
-
-*Calidad de datos*
-- [x] Outliers con regla de negocio verificable corregidos a `NA`
-      (`edad_anios`, `tiempo_experiencia_meses`,
-      `dias_perdidos`/`dias_mas_ansi`, sección 8); el resto se documenta sin
-      modificar.
-- [x] Columnas con más de 80% de nulos se mantienen en `data/processed/` sin
-      eliminar en esta fase.
-- [x] Revisión humana de 132 filas de texto redactado detectó 6 fugas
-      residuales de PII; corregidas en `clean.redact_pii_libre()` y
-      verificadas sobre las 5 fuentes (detalle en el diccionario de datos).
-
-*EDA*
-- [x] EDA dirigido: 6 preguntas (Pearson, Cramér's V, tasas de
-      incapacitante) con hallazgos documentados.
-- [x] Estadística descriptiva, distribuciones y valores faltantes del
-      histórico (`03_estadistica_descriptiva`).
-- [x] Notebooks ejectuados.
-
-*Data preparation*
-- [x] Estrategia definida en
-      [reports/estrategia_data_preparation.md](reports/estrategia_data_preparation.md):
-      población 2019-2022, X final, nulos, duplicados, outliers, escalado,
-      encoding y partición 80/20 sin fuga de información.
-- [x] Estrategia implementada en `src/prepare.py` y `src/model.py`
-      (pipeline de escalado/encoding ajustado solo con train).
-
-*Modelado*
-- [x] 5 algoritmos comparados con `RandomizedSearchCV` y validación
-      cruzada agrupada por evento (sección 9).
-- [x] Experimentación: afinamiento con `GridSearchCV` de los 2 finalistas,
-      evaluación final en test con intervalo de confianza del recall.
-- [x] Modelo recomendado: Random Forest, recall 0.806 en test (supera el
-      objetivo de 0.70 de la sección 2).
-
-**Siguiente:** sumar el año 2024 al entrenamiento para tener más casos
-reales de la clase minoritaria, y repetir la partición train/test con
-varias semillas para reportar un rango de recall, no un solo número (ver
-limitaciones en `notebooks/04_modelado.ipynb`).
-
-Dato aparte: `BASE CALCULO INDICADORES 2024.xlsx` es el único archivo de
-`data/raw/` que no se procesó, son indicadores ya agregados (no fila por
-evento), así que no aporta registros nuevos para modelar.
+Detalle completo, código de ambos experimentos y limitaciones (X sin
+`experiencia_puesto_meses`/`sexo`/`area_responsabilidad`, texto libre no
+usado) en `notebooks/04_modelado.ipynb`.
 
 ## Estructura de carpetas
 
@@ -309,7 +261,6 @@ evento), así que no aporta registros nuevos para modelar.
 │   └── diccionario_datos.md    # Diccionario de datos y bitácora de decisiones de limpieza.
 ├── .github/
 │   └── pull_request_template.md
-├── CLAUDE.md            # Reglas del proyecto para trabajo asistido por IA.
 ├── pyproject.toml
 └── .gitignore
 ```
