@@ -100,3 +100,63 @@ def armar_X_y(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
     X = df[COLUMNAS_X].copy()
     y = df["es_incapacitante"].astype(bool)
     return X, y
+
+
+_NOMBRE_MES = {
+    1: "ENERO", 2: "FEBRERO", 3: "MARZO", 4: "ABRIL", 5: "MAYO", 6: "JUNIO",
+    7: "JULIO", 8: "AGOSTO", 9: "SEPTIEMBRE", 10: "OCTUBRE", 11: "NOVIEMBRE", 12: "DICIEMBRE",
+}
+
+COLUMNAS_COMUNES_MODELADO = [
+    *COLUMNAS_X, "es_incapacitante", "fecha_evento", "descripcion_accidente"
+]
+
+
+def cargar_poblacion_2024_experimental(df_2024: pd.DataFrame) -> pd.DataFrame:
+    """
+    EXPERIMENTAL, no es el target oficial del Hito 2 (ver notebook
+    04_modelado, sección "Experimento adicional").
+
+    `accidentes_2024.csv` no trae `gravedad`, así que no se puede derivar
+    `es_incapacitante` con `derive_es_incapacitante()`. Se usa como proxy
+    `dias_dm > 0`: esa equivalencia se verificó para el histórico
+    2019-2022 (coincide con la etiqueta real en 458 de 459 filas, ver
+    reports/estrategia_data_preparation.md), pero **no está confirmada por
+    el equipo de SST específicamente para esta fuente** — queda como
+    pendiente explícito, no se oculta el supuesto.
+
+    `programa` y `lugar` no existen en este archivo (el Excel original no
+    las traía): quedan en `SIN_DATO` en todas las filas de 2024, igual que
+    cualquier otro nulo categórico. `mes` viene como número (1-12) en vez
+    de nombre; convertirlo es una traducción exacta de calendario, no una
+    equivalencia de negocio. El código de `turno` de esta fuente (`D`,
+    `M`, `N`, `T`, `C`) es distinto al del histórico (`DIA`, `TARDE`,
+    `NOCHE`, `TURNO_1/2/3`) y **no se intenta unificar**: no hay forma de
+    confirmar sin adivinar qué significa cada letra (en particular `M` y
+    `C`), mismo criterio que ya se aplicó para no unificar el turno
+    numerado con el de franja horaria en el histórico.
+    """
+    df = df_2024.copy()
+    df = df[df["dias_dm"].notna()].copy()
+    df["es_incapacitante"] = df["dias_dm"] > 0
+
+    df["mes"] = df["mes"].map(_NOMBRE_MES)
+    df["programa"] = pd.NA
+    df["lugar"] = pd.NA
+
+    for columna in COLUMNAS_CATEGORICAS:
+        serie = df[columna].astype("string").replace("-", pd.NA)
+        df[columna] = serie.astype("category")
+
+    df = recodificar_nulos_categoricos(df)
+    return df.reset_index(drop=True)
+
+
+def combinar_con_2024(
+    poblacion_historico: pd.DataFrame, poblacion_2024: pd.DataFrame
+) -> pd.DataFrame:
+    """Concatena el histórico 2019-2022 con la salida de `cargar_poblacion_2024_experimental`."""
+    return pd.concat(
+        [poblacion_historico[COLUMNAS_COMUNES_MODELADO], poblacion_2024[COLUMNAS_COMUNES_MODELADO]],
+        ignore_index=True,
+    )

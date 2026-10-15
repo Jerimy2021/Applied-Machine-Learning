@@ -1,10 +1,9 @@
 # Flujo de trabajo: limpieza de datos y EDA
 
 Guía para el equipo sobre cómo limpiar la data y hacer el EDA de forma
-consistente con las reglas de `CLAUDE.md`. Léela antes de tocar `data/` o
-escribir en `src/`.
+consistente. Léela antes de tocar `data/` o escribir en `src/`.
 
-## Principios (no negociables — vienen de `CLAUDE.md`)
+## Principios (no negociables)
 
 1. **`data/raw/` es solo lectura.** Ningún script ni notebook escribe ahí.
 2. **`data/` no se commitea**, con una única excepción: los `.csv` finales y
@@ -13,7 +12,7 @@ escribir en `src/`.
    formato.
 3. **Prohibido imputar silenciosamente.** Si una columna tiene nulos, primero
    se reporta (`clean.report_nulls`) y se documenta la decisión en
-   `reports/diccionario_datos.md` — recién después se implementa.
+   `reports/diccionario_datos.md`; recién después se implementa.
 4. **Toda decisión de limpieza** (imputación, eliminación, recodificación)
    se registra en `reports/diccionario_datos.md` con su justificación.
 5. **Anonimizar antes de compartir.** Nombres, DNI y legajos se reemplazan
@@ -43,7 +42,7 @@ al final de este documento.
 
 1. **Auditar la fuente** en `notebooks/00_inventario_fuentes.ipynb`: hojas,
    columnas, tipos, dimensiones de cada archivo de `data/raw/`.
-2. **Cargar** con `ingest.load_raw("nombre_del_archivo.xlsx")` — no usar
+2. **Cargar** con `ingest.load_raw("nombre_del_archivo.xlsx")`, no usar
    `pd.read_excel` directo en el notebook, así toda carga queda centralizada
    y reutilizable.
 3. **Reportar, no imputar:** correr `clean.report_nulls(df)` y revisar
@@ -54,12 +53,12 @@ al final de este documento.
    qué hacer con cada caso (imputar con qué criterio, eliminar filas,
    recodificar) y por qué.
 5. **Validar con el equipo** (PR o standup) antes de aplicar una decisión que
-   no sea obvia — sobre todo si implica eliminar filas o imputar valores.
+   no sea obvia, sobre todo si implica eliminar filas o imputar valores.
 6. **Implementar** la limpieza aprobada como función pura en `src/clean.py`
    (recibe el DataFrame crudo, devuelve el DataFrame limpio; no debe leer ni
    escribir archivos). Nombrar columnas en snake_case, sin tildes/ñ,
    categóricas en MAYÚSCULAS, fechas como `datetime64` (`fecha_evento`),
-   booleanas con prefijo `es_`/`tiene_` — y declarar cada una en
+   booleanas con prefijo `es_`/`tiene_`, y declarar cada una en
    `src/schema.py`.
 7. **Anonimizar** las columnas con datos personales con
    `clean.anonymize_column(df, "columna")`. Documentar el método en
@@ -73,7 +72,7 @@ al final de este documento.
 ## Flujo de EDA (paso a paso)
 
 1. Partir siempre de `data/processed/` (nunca leer `data/raw/` directo desde
-   el notebook de EDA — si falta algo, se agrega en el flujo de limpieza).
+   el notebook de EDA; si falta algo, se agrega en el flujo de limpieza).
 2. En `notebooks/01_eda_accidentes.ipynb`: importar desde `src/`, no
    reimplementar lógica de carga/limpieza ahí.
 3. Vista general: `df.shape`, `df.dtypes`, `df.describe()`.
@@ -96,7 +95,7 @@ al final de este documento.
 - [ ] Pasó por `clean.anonymize_column()` en toda columna con datos personales
 - [ ] Sus columnas están documentadas en `reports/diccionario_datos.md` y
       declaradas en `src/schema.py`
-- [ ] `git ls-files data/` solo muestra `.csv` de `data/processed/` — nada de
+- [ ] `git ls-files data/` solo muestra `.csv` de `data/processed/`, nada de
       `data/raw/`, `data/interim/`, ni `.xlsx`/`.xls`
 
 Este checklist también está en `.github/pull_request_template.md`.

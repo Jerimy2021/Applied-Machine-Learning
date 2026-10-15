@@ -1,9 +1,8 @@
 # Diccionario de datos
 
 Define cada columna de `data/processed/` y registra toda decisión de
-limpieza (imputación, eliminación, recodificación) con su justificación,
-como exige `CLAUDE.md`. Ninguna limpieza se aplica en `src/` sin quedar
-documentada aquí primero.
+limpieza (imputación, eliminación, recodificación) con su justificación.
+Ninguna limpieza se aplica en `src/` sin quedar documentada aquí primero.
 
 Las 5 fuentes de `data/raw/` fueron auditadas. Solo `BASE CALCULO
 INDICADORES 2024.xlsx` queda sin procesar: son indicadores ya agregados

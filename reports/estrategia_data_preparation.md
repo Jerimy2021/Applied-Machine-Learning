@@ -81,8 +81,8 @@ depende de la edad imputada, se descarta.
 ### Aumento de datos
 
 **No se generará un dataset simulado (mock).** Las razones:
-1. Un accidente inventado no es evidencia de SST (regla de `CLAUDE.md`: nunca
-   inventar datos), y el conjunto de prueba debe ser real.
+1. Un accidente inventado no es evidencia de SST, y el conjunto de prueba
+   debe ser real.
 2. Los datos actuales alcanzan para un primer modelo: 564 filas, con 124 no
    incapacitantes en train y 31 en test. Con 31 casos, el recall de esa clase
    tiene un intervalo de confianza amplio: se reportará con validación cruzada
@@ -196,5 +196,9 @@ arriesga fuga de información.
    y confirmar los demás con SST.
 2. **Posible doble registro** de una misma persona el mismo día con gravedad
    distinta (2 casos). Requiere confirmación de SST.
-3. **Sumar 2024 al entrenamiento:** decidir tras el primer modelo base, con
-   validación de SST de la equivalencia `días de descanso > 0` = incapacitante.
+3. **Sumar 2024 al entrenamiento:** ya probado como experimento en
+   `notebooks/04_modelado.ipynb` (población combinada de 828 filas, recall
+   0.868 en test frente a 0.806 con 2019-2022 solo). El resultado es
+   mejor, pero sigue dependiendo de que SST confirme la equivalencia
+   `días de descanso > 0` = incapacitante para esta fuente; mientras tanto
+   el modelo oficial del Hito 2 sigue siendo el de 2019-2022.
