@@ -212,10 +212,13 @@ Random Forest se mantiene estable entre CV y test.
 ![Matrices de confusión de los dos finalistas en test](reports/figures/modelado_matrices_confusion.png)
 ![Curvas ROC de los dos finalistas en test](reports/figures/modelado_curvas_roc.png)
 
-**Modelo recomendado: Random Forest** (`max_depth=12`,
-`max_features=sqrt`, `min_samples_leaf=7`, `n_estimators=1000`). Cumple
-el objetivo de recall de la sección 2 con un balance razonable de
-precisión, y es consistente entre CV y test, a diferencia de SVM.
+**Algoritmo ganador: Random Forest** (`max_depth=12`,
+`max_features=sqrt`, `min_samples_leaf=7`, `n_estimators=1000`, entrenado
+sobre 2019-2022). Cumple el objetivo de recall de la sección 2 con un
+balance razonable de precisión, y es consistente entre CV y test, a
+diferencia de SVM. Más abajo, la extensión con 2024 reafina estos mismos
+hiperparámetros sobre una población mayor y pasa a ser la recomendación
+oficial.
 
 **Validación con varias semillas:** una sola partición train/test puede
 ser optimista o pesimista por azar con solo 564 filas. Reajustando el
@@ -225,13 +228,16 @@ las 10 superan el 0.70 de la sección 2, el modelo no depende de haber
 tenido suerte con la partición del notebook.
 
 **Experimento adicional: ¿ayuda el sobremuestreo sintético (SMOTENC)?**
-Ante la sugerencia (opcional) del profesor de generar datos sintéticos
-por el tamaño chico de la clase minoritaria (155 filas de 564), se probó
-`SMOTENC` — no un dataset simulado completo (eso se descartó, ver
+SMOTENC genera filas sintéticas de la clase minoritaria interpolando
+entre casos reales similares, respetando que la mayoría de las columnas
+de X son categóricas (a diferencia del `SMOTE` clásico, que solo funciona
+con variables numéricas). Se evaluó como alternativa a
+`class_weight="balanced"` para compensar el desbalance de clases,
+corriendo **solo dentro de cada fold de train**, nunca sobre test
+(`src.model.construir_pipeline_smote`). No es lo mismo que generar un
+dataset simulado completo, que sigue descartado (ver
 `reports/estrategia_data_preparation.md`, sección "Aumento de datos": un
-accidente inventado no es evidencia de SST), sino sobremuestreo que
-genera vecinos interpolados entre casos reales, corriendo **solo dentro
-de cada fold de train**, nunca sobre test (`src.model.construir_pipeline_smote`).
+accidente inventado no es evidencia de SST).
 
 Se comparó el mismo Random Forest recomendado, con y sin SMOTENC, en 5
 intensidades de balanceo, sobre las mismas 10 particiones de
@@ -256,15 +262,23 @@ modelo recomendado sigue siendo Random Forest con `class_weight="balanced"`,
 sin sobremuestreo. Código y detalle completo en
 `notebooks/04_modelado.ipynb`.
 
-**Experimento adicional: sumar 2024.** `accidentes_2024.csv` no tiene
-`gravedad`, así que se probó usando `dias_dm > 0` como proxy de
-`es_incapacitante` (verificado para 2019-2022: coincide con la etiqueta
-real en 458 de 459 filas, pero no confirmado por SST para esta fuente
-específica). Con esa población combinada (828 filas, mejor balanceada,
-59.3%/40.7%), Random Forest reafinado da un recall de 0.868 en test (IC
-95%: 0.767-0.929) y, en 10 semillas, un rango de 0.806 a 0.882: mejor y
-más estable que con 2019-2022 solo. **No reemplaza la recomendación
-oficial** hasta que SST confirme el supuesto del proxy.
+**Extensión validada: sumar 2024.** `accidentes_2024.csv` no tiene
+`gravedad`, así que se usa como proxy `dias_dm > 0` de
+`es_incapacitante`: coincide con la etiqueta real en 458 de 459 filas del
+histórico 2019-2022, y **SST confirmó que la misma equivalencia aplica a
+la fuente 2024**. Con la población combinada (828 filas, mejor
+balanceada, 59.3%/40.7% frente al 72.5%/27.5% de 2019-2022 solo), Random
+Forest reafinado da un recall de 0.868 en test (IC 95%: 0.767 a 0.929) y,
+en 10 semillas, un rango de 0.806 a 0.882 (media 0.852, desviación
+0.025): más alto y más estable que con 2019-2022 solo (media 0.813,
+desviación 0.080).
+
+![Comparación de recall: 2019-2022 solo vs. con 2024](reports/figures/modelado_comparacion_2024.png)
+
+**Con el proxy ya confirmado por SST, este modelo pasa a ser la
+recomendación oficial del Hito 2**, en lugar del entrenado solo con
+2019-2022: mismo algoritmo y mismo criterio de selección, sobre una
+población más grande y mejor balanceada.
 
 Detalle completo, código de ambos experimentos y limitaciones (X sin
 `experiencia_puesto_meses`/`sexo`/`area_responsabilidad`, texto libre no

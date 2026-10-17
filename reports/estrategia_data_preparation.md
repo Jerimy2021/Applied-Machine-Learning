@@ -93,14 +93,13 @@ depende de la edad imputada, se descarta.
 4. Para el desbalance: `class_weight='balanced'` (no agrega filas). El
    sobremuestreo (SMOTE), si se probara, se aplica solo dentro de train.
 
-**SMOTENC: probado (2026-10-17) y descartado.** El profesor sugirió datos
-sintéticos como opción ante el tamaño chico de la clase minoritaria. No se
-generó un dataset simulado completo (sigue aplicando el punto 1 de
-arriba); se probó específicamente `SMOTENC` (sobremuestreo que respeta
-columnas categóricas, a diferencia de `SMOTE` puro), corriendo **solo
-dentro de cada fold de train** vía `imblearn.pipeline.Pipeline`
-(`src.model.construir_pipeline_smote()`), nunca sobre test — tal como
-preveía el punto 4.
+**SMOTENC: probado (2026-10-17) y descartado.** `SMOTENC` genera filas
+sintéticas de la clase minoritaria interpolando entre casos reales
+similares, respetando columnas categóricas (a diferencia de `SMOTE`
+puro). No es un dataset simulado completo (sigue aplicando el punto 1 de
+arriba); corre **solo dentro de cada fold de train** vía
+`imblearn.pipeline.Pipeline` (`src.model.construir_pipeline_smote()`),
+nunca sobre test, tal como preveía el punto 4.
 
 Se comparó el Random Forest recomendado (mismos hiperparámetros), con y
 sin SMOTENC, en 5 intensidades de balanceo, sobre las mismas 10
@@ -230,9 +229,9 @@ arriesga fuga de información.
    y confirmar los demás con SST.
 2. **Posible doble registro** de una misma persona el mismo día con gravedad
    distinta (2 casos). Requiere confirmación de SST.
-3. **Sumar 2024 al entrenamiento:** ya probado como experimento en
-   `notebooks/04_modelado.ipynb` (población combinada de 828 filas, recall
-   0.868 en test frente a 0.806 con 2019-2022 solo). El resultado es
-   mejor, pero sigue dependiendo de que SST confirme la equivalencia
-   `días de descanso > 0` = incapacitante para esta fuente; mientras tanto
-   el modelo oficial del Hito 2 sigue siendo el de 2019-2022.
+3. **Sumar 2024 al entrenamiento: confirmado por SST (2026-10-17).**
+   Probado en `notebooks/04_modelado.ipynb` (población combinada de 828
+   filas, recall 0.868 en test frente a 0.806 con 2019-2022 solo). SST
+   confirmó que `días de descanso > 0` equivale a incapacitante también en
+   esta fuente, así que este modelo pasa a ser la recomendación oficial
+   del Hito 2, en lugar del entrenado solo con 2019-2022.
