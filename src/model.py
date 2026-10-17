@@ -505,13 +505,14 @@ def comparar_smote(
     return resultados
 
 
-def graficar_comparacion_smote(resultados_semillas: dict, objetivo: float = 0.70):
+def graficar_comparacion_recall(resultados_semillas: dict, titulo: str, objetivo: float = 0.70):
     """
     Compara el recall de la clase minoritaria (10 particiones train/test)
-    entre el modelo recomendado y cada variante con SMOTENC de
-    `comparar_smote()`. Una fila por configuración: el rango min-max de
-    las 10 semillas (línea) y la media (punto), contra la línea del
-    objetivo del README (recall >= 0.70).
+    entre varias configuraciones (salida de `evaluar_multisemilla()` por
+    configuración, ej. `comparar_smote()`, o un diccionario armado a mano
+    con dos tablas). Una fila por configuración: el rango min-max de las
+    10 semillas (línea) y la media (punto), contra la línea del objetivo
+    del README (recall >= 0.70).
 
     Verde si las 10 semillas superan el objetivo, rojo si alguna queda por
     debajo: esa es la pregunta que decide si una configuración sirve, no
@@ -575,10 +576,6 @@ def graficar_comparacion_smote(resultados_semillas: dict, objetivo: float = 0.70
     for texto in leyenda.get_texts():
         texto.set_color(INK_SEC)
 
-    ax.set_title(
-        "Más balanceo sintético (SMOTENC) = menos recall: el modelo recomendado\n"
-        "es el único que cumple el objetivo en las 10 particiones",
-        fontsize=12.5, color=INK, fontweight="bold", loc="left", pad=16,
-    )
+    ax.set_title(titulo, fontsize=12.5, color=INK, fontweight="bold", loc="left", pad=16)
     fig.tight_layout(rect=[0, 0.05, 1, 1])
     return fig

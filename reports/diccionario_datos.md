@@ -342,17 +342,24 @@ de implementarse en `src/`.
   dato, no el riesgo real. Se mantiene `edad_anios` (45% nula) imputada
   con la mediana de train (2026-09-20). Detalle completo en
   `reports/estrategia_data_preparation.md`.
-- **SMOTENC probado y descartado (2026-10-17).** Ante la sugerencia del
-  profesor de usar datos sintéticos por el tamaño chico de la clase
-  minoritaria, se probó `SMOTENC` (no un dataset simulado completo, que
-  sigue descartado por las razones ya registradas) dentro del pipeline de
-  train, en 5 intensidades de balanceo. Resultado: a más balanceo
-  sintético, menos recall de forma monótona (0.813 sin SMOTENC vs. 0.690
-  con balance 1:1, en 10 particiones); el modelo recomendado es el único
-  que supera el objetivo de recall ≥ 0.70 en las 10 semillas. No se
-  adopta. Detalle completo, tabla y figura en
+- **SMOTENC probado y descartado (2026-10-17).** Ante el tamaño chico de
+  la clase minoritaria, se probó `SMOTENC` (no un dataset simulado
+  completo, que sigue descartado por las razones ya registradas) dentro
+  del pipeline de train, en 5 intensidades de balanceo. Resultado: a más
+  balanceo sintético, menos recall de forma monótona (0.813 sin SMOTENC
+  vs. 0.690 con balance 1:1, en 10 particiones); el modelo recomendado es
+  el único que supera el objetivo de recall ≥ 0.70 en las 10 semillas. No
+  se adopta. Detalle completo, tabla y figura en
   `reports/estrategia_data_preparation.md`, sección "Aumento de datos", y
   en `notebooks/04_modelado.ipynb`.
+- **Sumar 2024 confirmado por SST (2026-10-17).** SST confirmó que
+  `días de descanso > 0` equivale a incapacitante también en
+  `accidentes_2024.csv`. El modelo reafinado sobre la población combinada
+  (828 filas) pasa a ser la recomendación oficial del Hito 2, en lugar
+  del entrenado solo con 2019-2022 (recall 0.868 vs. 0.806 en test; 10
+  semillas 0.806-0.882 vs. 0.710-0.968). Detalle en
+  `reports/estrategia_data_preparation.md`, hallazgo 3, y en
+  `notebooks/04_modelado.ipynb`.
 
 ### Privacidad (2026-09-12 a 2026-09-17)
 
