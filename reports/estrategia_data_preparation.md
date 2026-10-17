@@ -93,6 +93,40 @@ depende de la edad imputada, se descarta.
 4. Para el desbalance: `class_weight='balanced'` (no agrega filas). El
    sobremuestreo (SMOTE), si se probara, se aplica solo dentro de train.
 
+**SMOTENC: probado (2026-10-17) y descartado.** El profesor sugirió datos
+sintéticos como opción ante el tamaño chico de la clase minoritaria. No se
+generó un dataset simulado completo (sigue aplicando el punto 1 de
+arriba); se probó específicamente `SMOTENC` (sobremuestreo que respeta
+columnas categóricas, a diferencia de `SMOTE` puro), corriendo **solo
+dentro de cada fold de train** vía `imblearn.pipeline.Pipeline`
+(`src.model.construir_pipeline_smote()`), nunca sobre test — tal como
+preveía el punto 4.
+
+Se comparó el Random Forest recomendado (mismos hiperparámetros), con y
+sin SMOTENC, en 5 intensidades de balanceo, sobre las mismas 10
+particiones de `evaluar_multisemilla()` (código y resultado completo en
+`notebooks/04_modelado.ipynb`, sección "¿Ayuda el sobremuestreo sintético
+(SMOTENC)?"):
+
+| Configuración | Recall medio (10 semillas) | Recall mínimo | Semillas que cumplen ≥ 0.70 |
+|---|---|---|---|
+| Random Forest recomendado (sin SMOTENC) | **0.813** | 0.710 | **10/10** |
+| SMOTENC `sampling_strategy=0.4` (más leve) | 0.806 | 0.677 | 9/10 |
+| SMOTENC `sampling_strategy=0.5` | 0.768 | 0.677 | 7/10 |
+| SMOTENC `sampling_strategy=0.6` | 0.745 | 0.645 | 6/10 |
+| SMOTENC `sampling_strategy=0.75` | 0.713 | 0.613 | 5/10 |
+| SMOTENC 1:1 (balance completo) | 0.690 | 0.581 | 6/10 |
+
+![Comparación de recall con y sin SMOTENC](figures/modelado_comparacion_smote.png)
+
+Relación monótona y sin excepciones: a más balanceo sintético, menos
+recall. SMOTENC mejora precisión y F1, pero el objetivo del README
+(sección 2) prioriza recall sobre precisión, y `class_weight='balanced'`
+ya ataca ese objetivo mejor que interpolar vecinos sintéticos. **Decisión:
+no se adopta SMOTENC.** El modelo oficial del Hito 2 sigue siendo Random
+Forest con `class_weight='balanced'`, sin sobremuestreo. Ver bitácora en
+`reports/diccionario_datos.md`.
+
 ## 3.2 Tratamiento de outliers
 
 Se distinguen dos tipos, como en un valor fuera de rango fisiológico frente a un

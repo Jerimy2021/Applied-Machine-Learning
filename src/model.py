@@ -10,6 +10,9 @@ sección 3.6). Los notebooks solo importan y muestran (ver CLAUDE.md).
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from imblearn.over_sampling import SMOTENC
+from imblearn.pipeline import Pipeline as PipelineImb
+from matplotlib.lines import Line2D
 from scipy.stats import loguniform, norm, randint
 from sklearn.base import clone
 from sklearn.compose import ColumnTransformer
@@ -28,7 +31,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, StratifiedGroupKFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 from sklearn.svm import SVC
 
 from src.prepare import COLUMNA_NUMERICA, COLUMNAS_CATEGORICAS
@@ -65,6 +68,68 @@ def construir_preprocesador() -> ColumnTransformer:
     return ColumnTransformer([
         ("numerica", numerica, [COLUMNA_NUMERICA]),
         ("categorica", categorica, COLUMNAS_CATEGORICAS),
+    ])
+
+
+def construir_preprocesador_previo_smote() -> ColumnTransformer:
+    """
+    Primer paso del pipeline con SMOTENC (ver `construir_pipeline_smote()`):
+    imputa `edad_anios` por mediana y codifica las categóricas con
+    `OrdinalEncoder` (no son las categorías finales del modelo, solo una
+    representación numérica para que SMOTENC pueda generar vecinos
+    sintéticos; el One-Hot real va después, en
+    `construir_preprocesador_posterior_smote()`). `handle_unknown` con
+    valor -1 por si una categoría de test no se vio en train.
+    """
+    categorica = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)
+    return ColumnTransformer([
+        ("numerica", SimpleImputer(strategy="median"), [COLUMNA_NUMERICA]),
+        ("categorica", categorica, COLUMNAS_CATEGORICAS),
+    ])
+
+
+def construir_preprocesador_posterior_smote() -> ColumnTransformer:
+    """
+    Segundo paso del pipeline con SMOTENC: sobre la salida ya remuestreada
+    (array posicional: columna 0 = `edad_anios`, columnas 1 en adelante =
+    categóricas codificadas), escala la numérica y aplica One-Hot a las
+    categóricas (mismo criterio que `construir_preprocesador()`: categorías
+    con menos de 10 filas van a `infrequent`).
+    """
+    indices_categoricas = list(range(1, 1 + len(COLUMNAS_CATEGORICAS)))
+    return ColumnTransformer([
+        ("escalar", StandardScaler(), [0]),
+        ("categorica", OneHotEncoder(
+            min_frequency=10, handle_unknown="infrequent_if_exist", sparse_output=False
+        ), indices_categoricas),
+    ])
+
+
+def construir_pipeline_smote(modelo, k_neighbors: int = 5) -> PipelineImb:
+    """
+    Pipeline de `imblearn` (no el de sklearn: este sí soporta un paso que
+    cambia el número de filas) con SMOTENC entre el preprocesamiento previo
+    y el posterior. SMOTENC, a diferencia de SMOTE, genera vecinos
+    sintéticos respetando que `COLUMNAS_CATEGORICAS` son categóricas (usa la
+    moda, no interpola, para esas columnas) — necesario porque X mezcla 1
+    numérica y 7 categóricas.
+
+    El remuestreo solo ocurre durante `fit` (y solo sobre el fold de train
+    de cada partición de `construir_cv()`); `predict`/`predict_proba` no lo
+    aplican, igual que cualquier paso de `imblearn.pipeline.Pipeline`. No
+    reemplaza datos reales: genera ejemplos minoritarios adicionales solo
+    para que el modelo entrene con una clase menos desbalanceada (ver
+    reports/estrategia_data_preparation.md, sección "Aumento de datos").
+    """
+    return PipelineImb([
+        ("preprocesar_previo", construir_preprocesador_previo_smote()),
+        ("smote", SMOTENC(
+            categorical_features=list(range(1, 1 + len(COLUMNAS_CATEGORICAS))),
+            k_neighbors=k_neighbors,
+            random_state=RANDOM_STATE,
+        )),
+        ("preprocesar_posterior", construir_preprocesador_posterior_smote()),
+        ("modelo", modelo),
     ])
 
 
@@ -402,4 +467,118 @@ def graficar_curvas_roc(modelos_finales: dict, X_test: pd.DataFrame, y_test: pd.
     ax.set_title("Curvas ROC en test")
     ax.plot([0, 1], [0, 1], linestyle="--", color="gray", linewidth=1)
     fig.tight_layout()
+    return fig
+
+
+def comparar_smote(
+    pipeline_base, X: pd.DataFrame, y: pd.Series, grupos: pd.Series,
+    modelo, intensidades: tuple = (1.0, 0.75, 0.6, 0.5, 0.4), semillas=range(10),
+) -> dict:
+    """
+    Corre `evaluar_multisemilla()` para el pipeline recomendado (sin
+    SMOTENC) y para `construir_pipeline_smote(modelo)` en cada intensidad de
+    `intensidades` (1.0 = balance 1:1, el resto = `sampling_strategy` de
+    `SMOTENC`, fracción minoritaria/mayoritaria objetivo). Devuelve un
+    diccionario {etiqueta: tabla de evaluar_multisemilla}, listo para
+    `graficar_comparacion_smote()`.
+
+    Es la verificación del experimento "¿mejora SMOTENC el recall
+    objetivo?" (ver reports/estrategia_data_preparation.md, sección
+    "Aumento de datos"): compara el mismo modelo final, con y sin SMOTENC,
+    sobre las mismas 10 particiones, nunca sobre test combinado con train.
+    """
+    resultados = {
+        "Random Forest (recomendado, sin SMOTENC)": evaluar_multisemilla(
+            pipeline_base, X, y, grupos, semillas=semillas
+        )
+    }
+    for intensidad in intensidades:
+        sampling_strategy = "auto" if intensidad == 1.0 else intensidad
+        pipeline_smote = construir_pipeline_smote(clone(modelo))
+        pipeline_smote.named_steps["smote"].set_params(sampling_strategy=sampling_strategy)
+        etiqueta = (
+            "SMOTENC 1:1" if intensidad == 1.0 else f"SMOTENC (sampling_strategy={intensidad})"
+        )
+        resultados[etiqueta] = evaluar_multisemilla(
+            pipeline_smote, X, y, grupos, semillas=semillas
+        )
+    return resultados
+
+
+def graficar_comparacion_smote(resultados_semillas: dict, objetivo: float = 0.70):
+    """
+    Compara el recall de la clase minoritaria (10 particiones train/test)
+    entre el modelo recomendado y cada variante con SMOTENC de
+    `comparar_smote()`. Una fila por configuración: el rango min-max de
+    las 10 semillas (línea) y la media (punto), contra la línea del
+    objetivo del README (recall >= 0.70).
+
+    Verde si las 10 semillas superan el objetivo, rojo si alguna queda por
+    debajo: esa es la pregunta que decide si una configuración sirve, no
+    el promedio solo (una media alta con una semilla mala igual
+    incumpliría el objetivo en la práctica).
+    """
+    BUENO, MALO = "#0ca30c", "#d03b3b"
+    INK, INK_SEC, MUTED, GRID, SURFACE = "#0b0b0b", "#52514e", "#898781", "#e1e0d9", "#fcfcfb"
+
+    etiquetas = list(resultados_semillas.keys())
+    fig, ax = plt.subplots(figsize=(10, 0.75 * len(etiquetas) + 1.6))
+    fig.patch.set_facecolor(SURFACE)
+    ax.set_facecolor(SURFACE)
+
+    for i, etiqueta in enumerate(etiquetas):
+        serie = resultados_semillas[etiqueta]["recall_minoritaria"]
+        minimo, maximo, media = serie.min(), serie.max(), serie.mean()
+        n_cumple = int((serie >= objetivo).sum())
+        color = BUENO if n_cumple == len(serie) else MALO
+        ax.plot([minimo, maximo], [i, i], color=color, linewidth=3,
+                solid_capstyle="round", zorder=2)
+        ax.scatter([media], [i], color=color, s=150, zorder=3,
+                   edgecolor=SURFACE, linewidth=1.5)
+        ax.annotate(f"{media:.3f}", (media, i), xytext=(0, 11), textcoords="offset points",
+                    ha="center", fontsize=10, color=INK, fontweight="bold")
+        ax.annotate(f"{n_cumple}/{len(serie)} semillas ≥ {objetivo:.2f}",
+                    (maximo, i), xytext=(12, 0), textcoords="offset points",
+                    va="center", fontsize=8.5, color=INK_SEC)
+
+    ax.axvline(objetivo, color=MUTED, linestyle="--", linewidth=1.3, zorder=1)
+    ax.annotate(
+        f"objetivo README: recall ≥ {objetivo:.2f}", xy=(objetivo, -0.75),
+        xytext=(6, 0), textcoords="offset points", fontsize=8.5, color=MUTED,
+        va="top", ha="left", rotation=90,
+    )
+
+    ax.set_yticks(range(len(etiquetas)))
+    ax.set_yticklabels(etiquetas, fontsize=10.5, color=INK)
+    ax.set_xlabel(
+        "Recall de la clase minoritaria (no incapacitante) en 10 particiones de test",
+        color=INK_SEC, fontsize=10,
+    )
+    ax.set_xlim(0.5, 1.02)
+    ax.grid(axis="x", color=GRID, linewidth=0.8, zorder=0)
+    for lado in ("top", "right", "left"):
+        ax.spines[lado].set_visible(False)
+    ax.spines["bottom"].set_color(MUTED)
+    ax.tick_params(colors=MUTED, length=0)
+    ax.invert_yaxis()
+
+    handles = [
+        Line2D([0], [0], color=BUENO, marker="o", linestyle="-", linewidth=3,
+               markersize=9, label="Cumple el objetivo en las 10 semillas"),
+        Line2D([0], [0], color=MALO, marker="o", linestyle="-", linewidth=3,
+               markersize=9, label="Falla el objetivo en alguna semilla"),
+    ]
+    leyenda = fig.legend(
+        handles=handles, loc="lower center", bbox_to_anchor=(0.5, -0.02),
+        ncol=2, frameon=False, fontsize=9,
+    )
+    for texto in leyenda.get_texts():
+        texto.set_color(INK_SEC)
+
+    ax.set_title(
+        "Más balanceo sintético (SMOTENC) = menos recall: el modelo recomendado\n"
+        "es el único que cumple el objetivo en las 10 particiones",
+        fontsize=12.5, color=INK, fontweight="bold", loc="left", pad=16,
+    )
+    fig.tight_layout(rect=[0, 0.05, 1, 1])
     return fig
