@@ -224,6 +224,38 @@ distintas, el recall va de 0.710 a 0.968 (media 0.813, desviación 0.080):
 las 10 superan el 0.70 de la sección 2, el modelo no depende de haber
 tenido suerte con la partición del notebook.
 
+**Experimento adicional: ¿ayuda el sobremuestreo sintético (SMOTENC)?**
+Ante la sugerencia (opcional) del profesor de generar datos sintéticos
+por el tamaño chico de la clase minoritaria (155 filas de 564), se probó
+`SMOTENC` — no un dataset simulado completo (eso se descartó, ver
+`reports/estrategia_data_preparation.md`, sección "Aumento de datos": un
+accidente inventado no es evidencia de SST), sino sobremuestreo que
+genera vecinos interpolados entre casos reales, corriendo **solo dentro
+de cada fold de train**, nunca sobre test (`src.model.construir_pipeline_smote`).
+
+Se comparó el mismo Random Forest recomendado, con y sin SMOTENC, en 5
+intensidades de balanceo, sobre las mismas 10 particiones de
+`evaluar_multisemilla`:
+
+| Configuración | Recall medio (10 semillas) | Recall mínimo | Semillas ≥ 0.70 |
+|---|---|---|---|
+| Random Forest recomendado (sin SMOTENC) | **0.813** | 0.710 | **10/10** |
+| SMOTENC `sampling_strategy=0.4` | 0.806 | 0.677 | 9/10 |
+| SMOTENC `sampling_strategy=0.5` | 0.768 | 0.677 | 7/10 |
+| SMOTENC `sampling_strategy=0.6` | 0.745 | 0.645 | 6/10 |
+| SMOTENC `sampling_strategy=0.75` | 0.713 | 0.613 | 5/10 |
+| SMOTENC 1:1 | 0.690 | 0.581 | 6/10 |
+
+![Comparación de recall con y sin SMOTENC](reports/figures/modelado_comparacion_smote.png)
+
+A más balanceo sintético, menos recall, sin excepciones en las 5
+intensidades probadas: SMOTENC mejora precisión y F1, pero el objetivo
+de esta sección prioriza recall, y `class_weight="balanced"` ya lo ataca
+mejor que interpolar vecinos sintéticos. **No se adopta SMOTENC.** El
+modelo recomendado sigue siendo Random Forest con `class_weight="balanced"`,
+sin sobremuestreo. Código y detalle completo en
+`notebooks/04_modelado.ipynb`.
+
 **Experimento adicional: sumar 2024.** `accidentes_2024.csv` no tiene
 `gravedad`, así que se probó usando `dias_dm > 0` como proxy de
 `es_incapacitante` (verificado para 2019-2022: coincide con la etiqueta
