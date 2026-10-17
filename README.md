@@ -203,6 +203,12 @@ completo.
 | SVM (RBF) | 0.880 | 0.258 (0.14-0.43) | 1.000 | 0.411 | 0.792 |
 | Random Forest | 0.783 | 0.806 (0.64-0.91) | 0.694 | 0.746 | 0.889 |
 
+**En palabras simples:** SVM identifica 9 de cada 10 casos leves durante
+el entrenamiento, pero en datos nuevos esa cifra cae a solo 8 de 31 (~1
+de cada 4): predice casi todo como incapacitante. Random Forest acierta
+25 de los mismos 31 casos leves (8 de cada 10), tanto en entrenamiento
+como en datos nuevos, por eso es el que se queda.
+
 SVM lideraba la comparación en validación cruzada, pero se desploma en
 test: predice casi todo como incapacitante (acierta las 82 filas de esa
 clase, pero solo 8 de 31 no incapacitantes), un caso claro de sobreajuste
