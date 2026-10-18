@@ -2,6 +2,12 @@
 
 Proyecto del curso de **Machine Learning Aplicado**, Ingeniería Industrial.
 
+> Este README es la referencia técnica completa. Para una explicación más
+> guiada del mismo contenido, organizada por tema y en lenguaje más
+> simple, ver la **[wiki del proyecto](https://github.com/Jerimy2021/Applied-Machine-Learning/wiki)**
+> (por ejemplo, [Modelado](https://github.com/Jerimy2021/Applied-Machine-Learning/wiki/Modelado)
+> para el detalle del Hito 2).
+
 ## 1. Problema central y contexto
 
 El área de SST registra los accidentes que ocurren, pero no puede anticipar
@@ -178,6 +184,9 @@ Justificación completa de cada decisión en la sección *Bitácora de
 decisiones* de [reports/diccionario_datos.md](reports/diccionario_datos.md).
 
 ## 9. Modelado (Hito 2)
+
+> Versión más detallada y explicada de esta sección en la wiki:
+> [Modelado](https://github.com/Jerimy2021/Applied-Machine-Learning/wiki/Modelado).
 
 Implementa la estrategia de la sección 8 en `src/prepare.py` (población,
 X, recodificación) y `src/model.py` (pipeline, modelos, experimentación),
