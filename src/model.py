@@ -579,3 +579,117 @@ def graficar_comparacion_recall(resultados_semillas: dict, titulo: str, objetivo
     ax.set_title(titulo, fontsize=12.5, color=INK, fontweight="bold", loc="left", pad=16)
     fig.tight_layout(rect=[0, 0.05, 1, 1])
     return fig
+
+
+_EJES_RADAR = ["n_estimators", "max_depth", "min_samples_leaf", "recall_minoritaria"]
+
+# Rango de cada eje para normalizar a [0, 1] en el radar. No es el mínimo/
+# máximo observado entre las 3 etapas, es el rango de búsqueda real: el de
+# `modelos_y_distribuciones()` para n_estimators/min_samples_leaf, y
+# 4-16 (valores posibles de `max_depth` en esa misma búsqueda) extendido a
+# 20 para poder ubicar "sin límite" (`None`) sin que quede fuera del eje.
+_RANGOS_RADAR_RF = {
+    "n_estimators": (150, 1050),
+    "max_depth": (4, 20),
+    "min_samples_leaf": (1, 10),
+    "recall_minoritaria": (0, 1),
+}
+
+
+def graficar_radar_hiperparametros(configuraciones: dict) -> plt.Figure:
+    """
+    Radar/spider de los hiperparámetros de Random Forest en las etapas de
+    búsqueda (ej. RandomizedSearchCV exploratorio -> GridSearchCV afinado
+    sobre 2019-2022 -> GridSearchCV final sobre 2019-2022+2024), para
+    comparar de un vistazo cuánto se movió cada uno y cómo acompaña el
+    recall de la clase minoritaria conseguido en esa etapa.
+
+    `configuraciones`: {etiqueta: {"n_estimators", "max_depth"
+    (acepta `None` = sin límite), "min_samples_leaf", "recall_minoritaria"}},
+    en el orden en que se quiere dibujar (típicamente de la etapa más
+    exploratoria a la final). Las 3 etapas usadas en `04_modelado.ipynb`
+    coinciden en `max_features='sqrt'`: por eso no es un eje del radar,
+    se anota en el título.
+
+    Cada eje tiene su propio rango real de `_RANGOS_RADAR_RF` (no son
+    comparables entre sí): se normalizan solo para poder dibujarlos juntos,
+    y el valor real de cada vértice se anota al lado del punto para no
+    perder la magnitud original.
+    """
+    def _normalizar(valor, eje):
+        lo, hi = _RANGOS_RADAR_RF[eje]
+        v = _RANGOS_RADAR_RF["max_depth"][1] if valor is None else valor
+        return (v - lo) / (hi - lo)
+
+    angulos = np.linspace(0, 2 * np.pi, len(_EJES_RADAR), endpoint=False).tolist()
+    angulos += angulos[:1]
+
+    INK, MUTED, GRID, SURFACE = "#0b0b0b", "#898781", "#e1e0d9", "#fcfcfb"
+    # Claro -> oscuro: misma gama de azul para marcar que es una progresión
+    # de etapas de un mismo algoritmo, no modelos distintos a comparar.
+    colores = ["#a9cdf0", "#4f93cf", "#0b4f8a", "#062b4a"]
+
+    fig, ax = plt.subplots(figsize=(7.5, 7.5), subplot_kw={"projection": "polar"})
+    fig.patch.set_facecolor(SURFACE)
+    ax.set_facecolor(SURFACE)
+
+    # Las etiquetas de valor se abren en abanico (pequeño corrimiento
+    # angular por etapa) en vez de apilarse sobre la misma línea del eje:
+    # así, cuando dos etapas caen cerca en valor (ej. min_samples_leaf 8 y
+    # 7), el texto no se superpone ni choca con la etiqueta del eje, que
+    # vive justo sobre esa línea.
+    n_configs = len(configuraciones)
+    jitter_angular = 0.05
+    # Si dos etapas comparten el mismo valor en un eje (ej. max_depth=12 en
+    # exploración y afinado), no se anota dos veces el mismo número: ya
+    # queda claro con las dos líneas superpuestas en ese punto; solo se
+    # re-anota si el valor cambió respecto a la última etapa vista en ese eje.
+    ultimo_valor_por_eje = {}
+
+    for i, ((etiqueta, params), color) in enumerate(zip(configuraciones.items(), colores)):
+        valores = [_normalizar(params[eje], eje) for eje in _EJES_RADAR]
+        valores += valores[:1]
+        ax.plot(angulos, valores, color=color, linewidth=2.2, label=etiqueta, zorder=3)
+        ax.fill(angulos, valores, color=color, alpha=0.12, zorder=2)
+        for angulo, valor, eje in zip(angulos[:-1], valores[:-1], _EJES_RADAR):
+            crudo = params[eje]
+            if crudo == ultimo_valor_por_eje.get(eje, object()):
+                continue
+            ultimo_valor_por_eje[eje] = crudo
+            if crudo is None:
+                texto = "sin límite"
+            elif eje == "recall_minoritaria":
+                texto = f"{crudo:.3f}"
+            else:
+                texto = str(crudo)
+            desplazamiento = (i - (n_configs - 1) / 2) * jitter_angular
+            ax.text(
+                angulo + desplazamiento, valor + 0.07, texto,
+                color=color, fontsize=8.5, fontweight="bold",
+                ha="center", va="center", zorder=4, clip_on=False,
+            )
+
+    ax.set_xticks(angulos[:-1])
+    ax.set_xticklabels(
+        ["n_estimators\n(150-1050)", "max_depth\n(4-20, sin límite=20)",
+         "min_samples_leaf\n(1-10)", "recall minoritaria\n(0-1, test u objetivo CV)"],
+        fontsize=9, color=INK,
+    )
+    ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+    ax.set_yticklabels([])
+    ax.set_ylim(0, 1.18)
+    ax.spines["polar"].set_color(MUTED)
+    ax.grid(color=GRID)
+    ax.tick_params(colors=MUTED)
+    ax.set_title(
+        "Evolución de hiperparámetros de Random Forest por etapa de búsqueda\n"
+        "(max_features = 'sqrt' se mantuvo fijo en todas las etapas)",
+        color=INK, fontsize=12, fontweight="bold", pad=22,
+    )
+    leyenda = fig.legend(
+        loc="lower center", bbox_to_anchor=(0.5, -0.03), ncol=1, fontsize=9.5, frameon=False,
+    )
+    for texto in leyenda.get_texts():
+        texto.set_color(INK)
+    fig.tight_layout(rect=[0, 0.07, 1, 1])
+    return fig
