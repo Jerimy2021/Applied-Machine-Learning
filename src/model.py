@@ -629,7 +629,7 @@ def graficar_radar_hiperparametros(configuraciones: dict) -> plt.Figure:
     # de etapas de un mismo algoritmo, no modelos distintos a comparar.
     colores = ["#a9cdf0", "#4f93cf", "#0b4f8a", "#062b4a"]
 
-    fig, ax = plt.subplots(figsize=(7.5, 7.5), subplot_kw={"projection": "polar"})
+    fig, ax = plt.subplots(figsize=(5.5, 5.5), subplot_kw={"projection": "polar"})
     fig.patch.set_facecolor(SURFACE)
     ax.set_facecolor(SURFACE)
 
@@ -639,7 +639,7 @@ def graficar_radar_hiperparametros(configuraciones: dict) -> plt.Figure:
     # 7), el texto no se superpone ni choca con la etiqueta del eje, que
     # vive justo sobre esa línea.
     n_configs = len(configuraciones)
-    jitter_angular = 0.05
+    jitter_angular = 0.065
     # Si dos etapas comparten el mismo valor en un eje (ej. max_depth=12 en
     # exploración y afinado), no se anota dos veces el mismo número: ya
     # queda claro con las dos líneas superpuestas en ese punto; solo se
