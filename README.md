@@ -222,9 +222,33 @@ Random Forest se mantiene estable entre CV y test.
 `max_features=sqrt`, `min_samples_leaf=7`, `n_estimators=1000`, entrenado
 sobre 2019-2022). Cumple el objetivo de recall de la sección 2 con un
 balance razonable de precisión, y es consistente entre CV y test, a
-diferencia de SVM. Más abajo, la extensión con 2024 reafina estos mismos
-hiperparámetros sobre una población mayor y pasa a ser la recomendación
-oficial.
+diferencia de SVM. Más abajo, la extensión con 2024 vuelve a buscar estos
+hiperparámetros desde cero sobre una población mayor y pasa a ser la
+recomendación oficial.
+
+**Cómo se eligieron los hiperparámetros:** 3 etapas de búsqueda, cada una
+optimizando el recall de la clase minoritaria
+(`METRICA_PRINCIPAL` en `src/model.py`). `max_features='sqrt'` es la única
+constante en las 3.
+
+| Etapa | n_estimators | max_depth | min_samples_leaf | Recall |
+|---|---|---|---|---|
+| Exploración (`RandomizedSearchCV`, 40 combinaciones, 2019-2022) | 850 | 12 | 8 | 0.783 (CV) |
+| Afinado (`GridSearchCV` acotado, 2019-2022) | 1000 | 12 | 7 | 0.806 (test) |
+| Final (búsqueda completa + 2024, recomendado) | 358 | 16 | 3 | 0.868 (test) |
+
+![Evolución de hiperparámetros de Random Forest por etapa de búsqueda](reports/figures/modelado_radar_hiperparametros.png)
+
+El afinado solo tiene margen para mover `n_estimators` y
+`min_samples_leaf` (`refinar_grilla()` deja `max_depth` y `max_features`
+fijos en lo que ya encontró la exploración). La extensión con 2024 sí
+repite la búsqueda completa: con una población ~47% más grande y mejor
+balanceada (59.3%/40.7% en vez de 72.5%/27.5%), converge en árboles más
+profundos y hojas más chicas (más evidencia por hoja sostiene un modelo
+más complejo sin sobreajustar) y en menos árboles (una clase minoritaria
+menos escasa necesita menos votos para estabilizarse). Detalle completo
+en `notebooks/04_modelado.ipynb`, sección "Cómo se eligieron los
+hiperparámetros de Random Forest".
 
 **Validación con varias semillas:** una sola partición train/test puede
 ser optimista o pesimista por azar con solo 564 filas. Reajustando el
