@@ -184,7 +184,9 @@ X, recodificación) y `src/model.py` (pipeline, modelos, experimentación),
 sobre la partición de train y test de 451/113 filas definida ahí mismo.
 El notebook `04_modelado.ipynb` solo importa y muestra.
 
-**5 algoritmos de scikit-learn**, comparados con `RandomizedSearchCV`
+### Comparación de 5 algoritmos
+
+5 algoritmos de scikit-learn, comparados con `RandomizedSearchCV`
 (40 combinaciones, validación cruzada de 5 pliegues agrupada por evento,
 solo en train): Regresión Logística, KNN, SVM (RBF), Random Forest y
 Gradient Boosting (`HistGradientBoostingClassifier`). 4 de los 5 superan
@@ -193,10 +195,11 @@ el recall de 0.70 que fija la sección 2; KNN queda abajo (no soporta
 
 ![Comparación de 5 algoritmos en validación cruzada](reports/figures/modelado_comparacion_cv.png)
 
-**Experimentación:** se afinan con `GridSearchCV` los dos modelos más
-relevantes de la comparación (mayor recall y, si es distinto, mejor F1):
-SVM y Random Forest. El resultado en test cambia el panorama por
-completo.
+### De la validación cruzada al test: por qué gana Random Forest
+
+Se afinan con `GridSearchCV` los dos modelos más relevantes de la
+comparación (mayor recall y, si es distinto, mejor F1): SVM y Random
+Forest. El resultado en test cambia el panorama por completo.
 
 | Modelo | Recall CV | Recall test (IC 95%) | Precisión test | F1 test | AUC-ROC test |
 |---|---|---|---|---|---|
@@ -218,46 +221,51 @@ Random Forest se mantiene estable entre CV y test.
 ![Matrices de confusión de los dos finalistas en test](reports/figures/modelado_matrices_confusion.png)
 ![Curvas ROC de los dos finalistas en test](reports/figures/modelado_curvas_roc.png)
 
-**Algoritmo ganador: Random Forest** (`max_depth=12`,
-`max_features=sqrt`, `min_samples_leaf=7`, `n_estimators=1000`, entrenado
-sobre 2019-2022). Cumple el objetivo de recall de la sección 2 con un
-balance razonable de precisión, y es consistente entre CV y test, a
-diferencia de SVM. Más abajo, la extensión con 2024 vuelve a buscar estos
-hiperparámetros desde cero sobre una población mayor y pasa a ser la
-recomendación oficial.
+**Algoritmo ganador: Random Forest**, entrenado sobre 2019-2022. Cumple
+el objetivo de recall de la sección 2 con un balance razonable de
+precisión, y es consistente entre CV y test, a diferencia de SVM. Más
+abajo, la extensión con 2024 vuelve a buscar sus hiperparámetros desde
+cero sobre una población mayor y pasa a ser la recomendación oficial.
 
-**Cómo se eligieron los hiperparámetros:** 3 etapas de búsqueda, cada una
-optimizando el recall de la clase minoritaria
-(`METRICA_PRINCIPAL` en `src/model.py`). `max_features='sqrt'` es la única
-constante en las 3.
+### Cómo se eligieron los hiperparámetros
+
+Un Random Forest es un conjunto de árboles de decisión que votan la
+predicción final. 3 números resumen cómo quedó configurado: cuántos
+árboles vota el bosque (`n_estimators`), qué tan profundo puede llegar
+cada árbol antes de decidir (`max_depth`) y cuántos casos mínimos necesita
+una rama final antes de poder decidir ahí (`min_samples_leaf`, para que no
+decida en base a 1-2 casos sueltos). La búsqueda de estos 3 números pasó
+por 3 etapas, todas optimizando el recall de la clase minoritaria (el
+objetivo de la sección 2):
 
 | Etapa | n_estimators | max_depth | min_samples_leaf | Recall |
 |---|---|---|---|---|
-| Exploración (`RandomizedSearchCV`, 40 combinaciones, 2019-2022) | 850 | 12 | 8 | 0.783 (CV) |
-| Afinado (`GridSearchCV` acotado, 2019-2022) | 1000 | 12 | 7 | 0.806 (test) |
-| Final (búsqueda completa + 2024, recomendado) | 358 | 16 | 3 | 0.868 (test) |
+| 1. Exploración (`RandomizedSearchCV`, 40 combinaciones al azar, 2019-2022) | 850 | 12 | 8 | 0.783 (CV) |
+| 2. Afinado (`GridSearchCV` acotado, 2019-2022) | 1000 | 12 | 7 | 0.806 (test) |
+| 3. Final (búsqueda completa + 2024, recomendado) | 358 | 16 | 3 | 0.868 (test) |
 
 ![Evolución de hiperparámetros de Random Forest por etapa de búsqueda](reports/figures/modelado_radar_hiperparametros.png)
 
-El afinado solo tiene margen para mover `n_estimators` y
-`min_samples_leaf` (`refinar_grilla()` deja `max_depth` y `max_features`
-fijos en lo que ya encontró la exploración). La extensión con 2024 sí
-repite la búsqueda completa: con una población ~47% más grande y mejor
-balanceada (59.3%/40.7% en vez de 72.5%/27.5%), converge en árboles más
-profundos y hojas más chicas (más evidencia por hoja sostiene un modelo
-más complejo sin sobreajustar) y en menos árboles (una clase minoritaria
-menos escasa necesita menos votos para estabilizarse). Detalle completo
-en `notebooks/04_modelado.ipynb`, sección "Cómo se eligieron los
-hiperparámetros de Random Forest".
+**En palabras simples:** de la etapa 1 a la 2 casi no cambia nada, porque
+el afinado solo prueba variantes cercanas al mejor resultado de la
+exploración. El salto grande es de la 2 a la 3: con 828 filas en vez de
+564 (47% más datos, y mejor balanceadas), el modelo puede permitirse
+árboles más profundos y ramas finales más chicas sin memorizar ruido, y
+necesita menos árboles para que el voto se estabilice. `max_features='sqrt'`
+no cambia en ninguna etapa. Resultado: el mejor recall de las 3 (0.868 en
+test). Código y detalle completo en `notebooks/04_modelado.ipynb`.
 
-**Validación con varias semillas:** una sola partición train/test puede
-ser optimista o pesimista por azar con solo 564 filas. Reajustando el
-mismo Random Forest (mismos hiperparámetros) sobre 10 particiones
-distintas, el recall va de 0.710 a 0.968 (media 0.813, desviación 0.080):
-las 10 superan el 0.70 de la sección 2, el modelo no depende de haber
-tenido suerte con la partición del notebook.
+### Validación con varias semillas
 
-**Experimento adicional: ¿ayuda el sobremuestreo sintético (SMOTENC)?**
+Una sola partición train/test puede ser optimista o pesimista por azar
+con solo 564 filas. Reajustando el mismo Random Forest (mismos
+hiperparámetros) sobre 10 particiones distintas, el recall va de 0.710 a
+0.968 (media 0.813, desviación 0.080): las 10 superan el 0.70 de la
+sección 2, el modelo no depende de haber tenido suerte con la partición
+del notebook.
+
+### Experimento: ¿ayuda el sobremuestreo sintético (SMOTENC)?
+
 SMOTENC genera filas sintéticas de la clase minoritaria interpolando
 entre casos reales similares, respetando que la mayoría de las columnas
 de X son categóricas (a diferencia del `SMOTE` clásico, que solo funciona
@@ -284,24 +292,27 @@ intensidades de balanceo, sobre las mismas 10 particiones de
 
 ![Comparación de recall con y sin SMOTENC](reports/figures/modelado_comparacion_smote.png)
 
-A más balanceo sintético, menos recall, sin excepciones en las 5
-intensidades probadas: SMOTENC mejora precisión y F1, pero el objetivo
-de esta sección prioriza recall, y `class_weight="balanced"` ya lo ataca
-mejor que interpolar vecinos sintéticos. **No se adopta SMOTENC.** El
-modelo recomendado sigue siendo Random Forest con `class_weight="balanced"`,
-sin sobremuestreo. Código y detalle completo en
-`notebooks/04_modelado.ipynb`.
+**En palabras simples:** a más balanceo sintético, menos recall, sin
+excepciones. El objetivo de esta sección prioriza recall sobre precisión,
+y `class_weight="balanced"` ya ataca eso directamente (penaliza más el
+error en la clase minoritaria durante el entrenamiento). SMOTENC hace lo
+contrario: suaviza la frontera de decisión interpolando vecinos, lo que
+mejora precisión y F1 pero vuelve al modelo más conservador para marcar
+"no incapacitante". **No se adopta SMOTENC.** El modelo recomendado sigue
+siendo Random Forest con `class_weight="balanced"`, sin sobremuestreo.
+Código y detalle completo en `notebooks/04_modelado.ipynb`.
 
-**Extensión validada: sumar 2024.** `accidentes_2024.csv` no tiene
-`gravedad`, así que se usa como proxy `dias_dm > 0` de
-`es_incapacitante`: coincide con la etiqueta real en 458 de 459 filas del
-histórico 2019-2022, y **SST confirmó que la misma equivalencia aplica a
-la fuente 2024**. Con la población combinada (828 filas, mejor
-balanceada, 59.3%/40.7% frente al 72.5%/27.5% de 2019-2022 solo), Random
-Forest reafinado da un recall de 0.868 en test (IC 95%: 0.767 a 0.929) y,
-en 10 semillas, un rango de 0.806 a 0.882 (media 0.852, desviación
-0.025): más alto y más estable que con 2019-2022 solo (media 0.813,
-desviación 0.080).
+### Extensión: sumar 2024 (modelo oficial)
+
+`accidentes_2024.csv` no tiene `gravedad`, así que se usa como proxy
+`dias_dm > 0` de `es_incapacitante`: coincide con la etiqueta real en 458
+de 459 filas del histórico 2019-2022, y **SST confirmó que la misma
+equivalencia aplica a la fuente 2024**. Con la población combinada (828
+filas, mejor balanceada, 59.3%/40.7% frente al 72.5%/27.5% de 2019-2022
+solo), Random Forest reafinado da un recall de 0.868 en test (IC 95%:
+0.767 a 0.929) y, en 10 semillas, un rango de 0.806 a 0.882 (media 0.852,
+desviación 0.025): más alto y más estable que con 2019-2022 solo (media
+0.813, desviación 0.080).
 
 ![Comparación de recall: 2019-2022 solo vs. con 2024](reports/figures/modelado_comparacion_2024.png)
 
