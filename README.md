@@ -165,7 +165,7 @@ extremo):**
 |---|---|
 | `edad_anios <= 0` (histórico, 4 filas) | Una edad de 0 es imposible para un trabajador |
 | `tiempo_experiencia_meses` donde `/12 > edad_anios` (2024, 2 filas) | Nadie tiene más años de experiencia que de vida |
-| `dias_perdidos`/`dias_mas_ansi == 6000` (histórico, 4 filas) | Mismo valor exacto repetido en accidentes no relacionados: más compatible con un tope/placeholder del sistema que con un dato real |
+| `dias_perdidos`/`dias_mas_ansi == 6000` (histórico, 3 de 4 filas) | Mismo valor exacto repetido en accidentes no relacionados: más compatible con un tope/placeholder del sistema que con un dato real. La 4ta fila (2021) tiene `cargo_ansi = 6000` real: SST confirmó que no es un placeholder, se restauró (ver diccionario de datos) |
 
 **Sin corregir a propósito** (extremos estadísticos sin regla de negocio que
 los marque como error): `dias_dm`, `dias_dm_total_indicador`, `nota_midot`,

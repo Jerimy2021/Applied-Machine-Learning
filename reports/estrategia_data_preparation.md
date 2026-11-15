@@ -217,18 +217,22 @@ arriesga fuga de información.
 
 ## Hallazgos que requieren decisión del equipo
 
-1. **Los valores `6000` de `dias_perdidos`/`dias_mas_ansi` quizá no son
-   placeholders.** La columna `cargo_ansi` toma valores estándar (60, 75, 100, 135,
-   175, 200, 300, 400, 3000, 4500, 6000). El `4500` de 2020 es una amputación de
-   brazo con `cargo_ansi = 4500`: es un dato real. De los cuatro `6000` que se
-   pasaron a `NA`, el de 2021 es un accidente `MORTAL` con `cargo_ansi = 6000`
-   (dato real); los otros tres (atropello 2018, golpe 2019, fractura de pierna 2022)
-   no tienen `cargo_ansi` y parecen un código mal digitado. **No afecta al modelo**
-   (no son X; el target sale de `gravedad`), pero contradice la justificación del
-   diccionario. **Propuesta:** restaurar `dias_mas_ansi = 6000` en el caso `MORTAL`
-   y confirmar los demás con SST.
-2. **Posible doble registro** de una misma persona el mismo día con gravedad
-   distinta (2 casos). Requiere confirmación de SST.
+1. **Los valores `6000` de `dias_perdidos`/`dias_mas_ansi`: resuelto con
+   SST (2026-11-15).** La columna `cargo_ansi` toma valores estándar (60, 75, 100,
+   135, 175, 200, 300, 400, 3000, 4500, 6000). El `4500` de 2020 es una amputación
+   de brazo con `cargo_ansi = 4500`: es un dato real. De los cuatro `6000` que se
+   habían pasado a `NA`, el de 2021 trae `cargo_ansi = 6000` (código ANSI Z16.1 de
+   fatalidad): SST confirmó que es un dato real, no un error, y se restauró
+   `dias_mas_ansi = 6000` en esa fila. Los otros tres (atropello 2018, golpe 2019,
+   fractura de pierna 2022) no tienen `cargo_ansi` registrado: SST confirmó que sí
+   son un código mal digitado, se mantienen en `NA`. **No afecta al modelo** (no
+   son X; el target sale de `gravedad`). Implementado en
+   `src.ingest.load_historico_accidentes`, detalle en diccionario_datos.md.
+2. **Posible doble registro: resuelto con SST (2026-11-15).** 2 casos de una
+   misma persona el mismo día con gravedad distinta (2019-11-20 y 2019-12-09).
+   SST confirmó que es el mismo accidente con 2 lesiones registradas en filas
+   separadas (partes del cuerpo distintas en ambos casos), no un doble tipeo.
+   No se elimina ni se fusiona ninguna fila.
 3. **Sumar 2024 al entrenamiento: confirmado por SST (2026-10-17).**
    Probado en `notebooks/04_modelado.ipynb` (población combinada de 828
    filas, recall 0.868 en test frente a 0.806 con 2019-2022 solo). SST

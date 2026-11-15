@@ -200,7 +200,7 @@ de negocio verificable; un valor extremo no es, por sí solo, un error:
 |---|---|---|
 | `edad_anios` <= 0 (histórico) | Una edad de 0 es imposible para un trabajador | 4 |
 | `tiempo_experiencia_meses` / 12 > `edad_anios` (2024) | Nadie tiene más años de experiencia que de vida | 2 |
-| `dias_perdidos` / `dias_mas_ansi` = 6000 (histórico) | Mismo valor repetido en accidentes no relacionados: más compatible con un tope del sistema de origen que con un dato real | 4 |
+| `dias_perdidos` / `dias_mas_ansi` = 6000 (histórico) | Mismo valor repetido en accidentes no relacionados: más compatible con un tope del sistema de origen que con un dato real, salvo la excepción confirmada abajo | 3 |
 
 Sin corregir a propósito (extremos estadísticos sin regla de negocio que
 los marque como error): `dias_dm`, `dias_dm_total_indicador`, `nota_midot`,
@@ -211,12 +211,15 @@ eliminar estos solo por ser grandes sería inventar un criterio.
 ![Boxplot de días de descanso médico por fuente](figures/outliers_boxplot_dias_perdidos.png)
 ![Boxplot de tiempo_experiencia_meses (2023-2024)](figures/outliers_boxplot_tiempo_experiencia_meses.png)
 
-**Pendiente de revisión con SST:** los valores `6000` que se pasaron a
-`NA` podrían no ser todos un error de digitación. `cargo_ansi` usa valores
-estándar (60, 75, 100, 135, 175, 200, 300, 400, 3000, 4500, 6000); uno de
-los casos corregidos es un accidente con gravedad `MORTAL` y
-`cargo_ansi = 6000`, lo que sugiere un dato real, no un placeholder. Los
-otros tres (sin `cargo_ansi` registrado) sí parecen un error de tipeo.
+**Resuelto con el equipo de SST (2026-11-15):** de los 4 valores `6000`
+encontrados, solo la fila de 2021 trae `cargo_ansi = 6000` registrado (el
+código estándar de fatalidad en la escala ANSI Z16.1): el equipo confirmó
+que es un dato real, no un error de digitación, así que `dias_mas_ansi`
+se restauró a `6000` en esa fila (`src.ingest.load_historico_accidentes`).
+Los otros 3 (sin `cargo_ansi` registrado) sí se confirmaron como error de
+tipeo y se mantienen en `NA`. No afecta al modelo del Hito 2: ni
+`dias_perdidos` ni `dias_mas_ansi` son X (data leakage, ver README
+sección 5).
 
 ## 7. Privacidad: anonimización y PII
 
@@ -367,3 +370,18 @@ de implementarse en `src/`.
 - No se reescribe el historial de git por este incidente (2026-09-17).
 - `redact_pii_libre()` ampliada tras la revisión humana de 132 filas; ver
   sección 7.
+
+### Cierre de pendientes con el equipo de SST (2026-11-15)
+
+- **`dias_mas_ansi = 6000` (histórico, fila de 2021):** confirmado como
+  dato real (`cargo_ansi = 6000`, código ANSI Z16.1 de fatalidad en esa
+  fila). Se restaura en `src.ingest.load_historico_accidentes()`; los
+  otros 3 casos de `6000` (sin `cargo_ansi` registrado) se confirman como
+  error de tipeo y se mantienen en `NA`. Ver sección 6.
+- **Posible doble registro (2019-11-20 y 2019-12-09):** confirmado que es
+  el mismo accidente con 2 lesiones registradas en filas separadas
+  (partes del cuerpo distintas en ambos casos), no un error de doble
+  tipeo. No se elimina ni se fusiona ninguna fila.
+- **Agrupar `lugar`, `fuente_peligro`, `puesto_trabajo`:** el equipo
+  decide diferirlo al Hito 3, como trabajo de *feature engineering* del
+  próximo modelo, no como un pendiente de limpieza de este hito.
