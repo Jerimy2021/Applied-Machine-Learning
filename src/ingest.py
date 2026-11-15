@@ -369,6 +369,13 @@ def load_historico_accidentes() -> pd.DataFrame:
     raw.columns = raw.columns.str.strip()
     df = raw.rename(columns=_RENAME_HISTORICO)
 
+    # Se guarda antes de normalizar cargo_ansi a categorica (mas abajo
+    # queda como texto, ej. "6000.0", y ya no se puede comparar como
+    # numero): marca las filas cuyo cargo_ansi == 6000, el codigo ANSI
+    # Z16.1 de fatalidad. Se usa para no nulear el 6000 de dias_mas_ansi en
+    # esa fila especifica (ver mas abajo).
+    es_cargo_ansi_6000 = pd.to_numeric(df["cargo_ansi"], errors="coerce") == 6000
+
     # Celdas mal pegadas (ver constante arriba): se limpia solo la celda, no la fila.
     for fila, columna in _CELDAS_CONTAMINADAS_HISTORICO:
         df.loc[fila, columna] = pd.NA
@@ -399,8 +406,12 @@ def load_historico_accidentes() -> pd.DataFrame:
     # marcan como NA, no se imputa ningún reemplazo. Ver diccionario_datos.md,
     # sección "Valores atípicos".
     df.loc[df["edad_anios"] <= 0, "edad_anios"] = pd.NA
-    df.loc[df["dias_perdidos"] == 6000, "dias_perdidos"] = pd.NA
-    df.loc[df["dias_mas_ansi"] == 6000, "dias_mas_ansi"] = pd.NA
+    # El equipo de SST confirmo (2026-11-15, ver diccionario_datos.md) que
+    # el 6000 con cargo_ansi=6000 registrado es un dato real (fatalidad
+    # segun ANSI Z16.1), no un error de tipeo: no se nulea esa fila. Los
+    # otros 3 casos de 6000 (sin cargo_ansi) si son error y se nulean.
+    df.loc[(df["dias_perdidos"] == 6000) & ~es_cargo_ansi_6000, "dias_perdidos"] = pd.NA
+    df.loc[(df["dias_mas_ansi"] == 6000) & ~es_cargo_ansi_6000, "dias_mas_ansi"] = pd.NA
     # Mismo criterio que en tiempo_experiencia_meses (2023/2024): nadie tiene
     # más experiencia que años de vida. Verificado: 0 filas violan esta regla
     # en esta fuente (se deja el chequeo por consistencia con la misma regla
