@@ -357,19 +357,19 @@ el recall de forma monótona cuanto más balanceo sintético se agrega,
 porque suaviza la frontera de decisión justo en la dirección contraria a
 la que pide el objetivo del proyecto.
 
-**Qué sigue abierto, a propósito:** agrupar `lugar`, `fuente_peligro` y
-`puesto_trabajo` (cientos de categorías, muchas con un solo caso) queda
-diferido al Hito 3 como trabajo de *feature engineering*, no es un
-pendiente de limpieza de este modelo (ver wiki,
-[Pendientes y próximos pasos](https://github.com/Jerimy2021/Applied-Machine-Learning/wiki/Pendientes-y-pr%C3%B3ximos-pasos)).
-La app de Hito 3 (`app/`, ver sección 11) despliega el modelo del Hito 2
-**sin cambios**: el agrupamiento de categorías no es parte de esa
-entrega.
+**Alcance de este proyecto:** `lugar`, `fuente_peligro` y
+`puesto_trabajo` (cientos de categorías, muchas con un solo caso) no se
+agruparon; el modelo las usa tal cual. No es un pendiente de limpieza
+sin resolver: el proyecto tiene 3 hitos y los 3 están completos (ver
+wiki, [Pendientes y próximos pasos](https://github.com/Jerimy2021/Applied-Machine-Learning/wiki/Pendientes-y-pr%C3%B3ximos-pasos)),
+agrupar esas categorías queda fuera de ese alcance, no diferido a un
+hito que ya pasó. La app desplegada (`app/`, ver sección 11) usa el
+modelo del Hito 2 **sin cambios**.
 
 **Limitaciones:** `experiencia_puesto_meses`, `sexo`,
 `area_responsabilidad` y `anio` quedan fuera de X (su disponibilidad
 depende de la clase objetivo en el período de entrenamiento, ver sección
-5). El texto libre (`descripcion_accidente`) tampoco se usa todavía.
+5). El texto libre (`descripcion_accidente`) tampoco se usa.
 
 ## 11. App del Hito 3 (dashboard + predicción)
 
@@ -397,10 +397,16 @@ pip install -r app/requirements.txt
 streamlit run app/Inicio.py
 ```
 
-**Despliegue:** se probó en una instancia de AWS Lightsail (ver
-`deploy/README.md`) y se dio de baja por costo (Lightsail no tiene un
-tier realmente gratis). Evaluando Streamlit Community Cloud (gratis,
-pensado para esto) como alternativa. URL: _pendiente_.
+**Desplegado en Streamlit Community Cloud** (gratis, pensado para esto,
+redespliega solo con cada push a `develop`):
+**https://applied-machine-learning-ntgcxzubih4xqpmq8rpfay.streamlit.app**
+
+Se probó antes en una instancia de AWS Lightsail (ver
+`deploy/README.md`) y se dio de baja: Lightsail no tiene un tier
+realmente gratis para esta cuenta (~US$7/mes), y Streamlit Community
+Cloud resuelve el mismo caso de uso sin costo. Los scripts de Lightsail
+quedan en `deploy/` como referencia de la alternativa evaluada, no es
+el método de despliegue actual.
 
 ## Estructura de carpetas
 
