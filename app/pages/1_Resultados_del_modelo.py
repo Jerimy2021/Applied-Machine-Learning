@@ -215,12 +215,26 @@ with tab_conclusiones:
     st.markdown("#### En 3 ideas")
     st.markdown(
         """
-1. **El objetivo se cumplió con margen.** Se pedía recall ≥ 0.70, el
-   modelo llega a 0.868.
-2. **Ganó por ser confiable, no por el score más alto.** Random Forest
-   no lideraba la validación cruzada (SVM sí, con 0.880), pero fue el
-   único que se mantuvo estable al pasar a datos nuevos.
-3. **SMOTENC se probó y no ayudó.** Más balanceo sintético significó
-   siempre menos recall, nunca más.
-"""
+        <div class="idea-grid">
+            <div class="idea-card">
+                <div class="idea-numero">1</div>
+                <div class="idea-titulo">El objetivo se cumplió con margen</div>
+                <div class="idea-texto">Se pedía recall ≥ 0.70, el modelo llega a 0.868.</div>
+            </div>
+            <div class="idea-card">
+                <div class="idea-numero">2</div>
+                <div class="idea-titulo">Ganó por ser confiable, no por el score más alto</div>
+                <div class="idea-texto">Random Forest no lideraba la validación cruzada (SVM sí,
+                con 0.880), pero fue el único que se mantuvo estable al pasar a datos
+                nuevos.</div>
+            </div>
+            <div class="idea-card">
+                <div class="idea-numero">3</div>
+                <div class="idea-titulo">SMOTENC se probó y no ayudó</div>
+                <div class="idea-texto">Más balanceo sintético significó siempre menos recall,
+                nunca más.</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )

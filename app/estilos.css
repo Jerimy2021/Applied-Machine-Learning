@@ -24,12 +24,31 @@
 }
 
 .hero-card {
+    position: relative;
+    overflow: hidden;
     background: linear-gradient(135deg, #eef1f5 0%, #ffffff 100%);
     border: 1px solid var(--color-borde);
     border-radius: 18px;
     padding: 2rem 1.5rem 1.8rem 1.5rem;
     box-shadow: 0 6px 24px rgba(11, 79, 138, 0.1);
     animation: aparecer-subiendo 0.5s ease-out;
+}
+
+/* Resplandor decorativo detras del numero, muy sutil */
+.hero-card::before {
+    content: "";
+    position: absolute;
+    top: -60%;
+    left: 50%;
+    width: 420px;
+    height: 420px;
+    transform: translateX(-50%);
+    background: radial-gradient(circle, rgba(11, 79, 138, 0.12) 0%, rgba(11, 79, 138, 0) 70%);
+    pointer-events: none;
+}
+
+.hero-card > * {
+    position: relative;
 }
 
 /* Numero grande (recall del modelo): el dato que mas importa, tiene que
@@ -116,12 +135,19 @@ h2, h3 {
     font-weight: 600;
 }
 
-/* Metricas (st.metric) como tarjetas, no como texto plano */
+/* Metricas (st.metric) como tarjetas, no como texto plano, con el
+   mismo "se levanta un poco" de los links de navegacion */
 div[data-testid="stMetric"] {
     background-color: var(--color-fondo-secundario);
     border: 1px solid var(--color-borde);
     border-radius: 10px;
     padding: 1rem 1.2rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+div[data-testid="stMetric"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(11, 79, 138, 0.1);
 }
 
 div[data-testid="stMetricLabel"] {
@@ -254,4 +280,78 @@ a[data-testid="stPageLink"]:hover {
     border-color: var(--color-primario);
     box-shadow: 0 6px 16px rgba(11, 79, 138, 0.14);
     transform: translateY(-2px);
+}
+
+/* "En 3 ideas" (Conclusiones finales): 3 tarjetas con numero grande, no
+   una lista numerada plana */
+.idea-grid {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin: 1rem 0 1.5rem 0;
+}
+
+.idea-card {
+    flex: 1 1 220px;
+    background-color: var(--color-fondo-secundario);
+    border: 1px solid var(--color-borde);
+    border-radius: 12px;
+    padding: 1.2rem 1.1rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.idea-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(11, 79, 138, 0.12);
+}
+
+.idea-numero {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--color-primario);
+    line-height: 1;
+    margin-bottom: 0.4rem;
+}
+
+.idea-titulo {
+    font-weight: 700;
+    color: var(--color-texto);
+    margin-bottom: 0.3rem;
+}
+
+.idea-texto {
+    color: var(--color-texto-secundario);
+    font-size: 0.92rem;
+}
+
+/* Responsive: pantallas angostas (celular) */
+@media (max-width: 640px) {
+    .hero-stat-numero {
+        font-size: 3.2rem;
+    }
+
+    .hero-card {
+        padding: 1.5rem 1rem 1.3rem 1rem;
+    }
+
+    .antes-ahora {
+        gap: 0.4rem;
+    }
+
+    .antes-ahora .etiqueta {
+        font-size: 0.78rem;
+        padding: 0.4rem 0.7rem;
+    }
+
+    .resultado-titulo {
+        font-size: 1.4rem;
+    }
+
+    .idea-card {
+        flex: 1 1 100%;
+    }
+
+    .block-container {
+        padding-top: 1.5rem;
+    }
 }
