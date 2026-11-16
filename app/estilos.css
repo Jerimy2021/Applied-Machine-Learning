@@ -14,6 +14,27 @@
     --color-fondo-secundario: #eef1f5;
 }
 
+/* Numero grande de la pagina de Inicio (recall del modelo): es el dato
+   que mas importa, tiene que verse primero y dominar la pagina. */
+.hero-stat {
+    text-align: center;
+    padding: 1.5rem 1rem 2rem 1rem;
+}
+
+.hero-stat-numero {
+    font-size: 4.5rem;
+    font-weight: 800;
+    color: var(--color-primario);
+    line-height: 1;
+}
+
+.hero-stat-etiqueta {
+    color: var(--color-texto-secundario);
+    font-size: 1rem;
+    max-width: 480px;
+    margin: 0.6rem auto 0 auto;
+}
+
 /* Ancho de columna acotado: lee mejor en escritorio sin ahogar las
    paginas en layout="wide" (el dashboard muestra imagenes de a 2
    columnas). */

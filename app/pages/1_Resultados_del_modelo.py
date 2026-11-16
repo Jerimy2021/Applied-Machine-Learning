@@ -24,6 +24,20 @@ from common import DISCLAIMER, FIGURES_DIR, aplicar_estilos  # noqa: E402
 st.set_page_config(page_title="Resultados del modelo", layout="wide")
 aplicar_estilos()
 
+
+def _imagen_centrada(ruta, ancho_relativo: int = 4) -> None:
+    """
+    Centra una imagen y la acota a un ancho consistente (en vez de
+    `use_container_width=True` a secas, que en layout="wide" estira
+    imágenes casi cuadradas hasta verse enormes y sin nitidez).
+    `ancho_relativo` sobre 6 columnas totales: 4 = la imagen ocupa 4/6
+    del ancho, con 1/6 de margen a cada lado.
+    """
+    margen = (6 - ancho_relativo) / 2
+    columnas = st.columns([margen, ancho_relativo, margen])
+    with columnas[1]:
+        st.image(str(ruta), width="stretch")
+
 st.title("Resultados del modelo (Hito 2)")
 st.caption(
     "Detalle completo en el "
@@ -80,9 +94,12 @@ pocos datos de la clase minoritaria. Random Forest se mantiene estable
 entre CV y test.
 """
     )
-    col_a, col_b = st.columns(2)
-    col_a.image(str(FIGURES_DIR / "modelado_matrices_confusion.png"))
-    col_b.image(str(FIGURES_DIR / "modelado_curvas_roc.png"))
+    # Una debajo de otra, centradas al mismo ancho relativo (no lado a
+    # lado): tienen proporciones muy distintas (la de matrices es ancha y
+    # baja, la de curvas es casi cuadrada) y forzarlas a la misma columna
+    # se veía desparejo.
+    _imagen_centrada(FIGURES_DIR / "modelado_matrices_confusion.png")
+    _imagen_centrada(FIGURES_DIR / "modelado_curvas_roc.png")
 
 with tab_hiperparametros:
     st.markdown(
@@ -111,7 +128,7 @@ minoritaria:
             }
         ).set_index("Etapa")
     )
-    st.image(str(FIGURES_DIR / "modelado_radar_hiperparametros.png"))
+    _imagen_centrada(FIGURES_DIR / "modelado_radar_hiperparametros.png", ancho_relativo=3)
     st.markdown(
         """
 **En palabras simples:** de la etapa 1 a la 2 casi no cambia nada, porque
@@ -214,6 +231,13 @@ SMOTENC se evaluó como alternativa para el desbalance de clases y se
 descartó con evidencia cuantitativa: empeora el recall de forma monótona
 cuanto más balanceo sintético se agrega.
 """
+    )
+    _imagen_centrada(FIGURES_DIR / "modelado_comparacion_2024.png", ancho_relativo=5)
+    st.caption(
+        "Sumar 2024 al entrenamiento sube el recall promedio y lo hace "
+        "más estable entre particiones: ambas configuraciones superan el "
+        "objetivo de recall ≥ 0.70, pero la que suma 2024 (la oficial) "
+        "lo hace con más margen y menos variación entre semillas."
     )
     st.info(
         "**Qué sigue abierto, a propósito:** agrupar `lugar`, "

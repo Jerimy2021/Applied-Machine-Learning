@@ -13,13 +13,36 @@ aplicar_estilos()
 st.title("Análisis predictivo de accidentes SST")
 st.caption("Proyecto del curso de Machine Learning Aplicado, Ingeniería Industrial")
 
+# Numero grande primero (lo que mas importa, no una metrica chica mas
+# entre otras tres): ver el "antes/ahora" de abajo para el porque.
 st.markdown(
-    """
-Clasifica cada accidente reportado como **incapacitante** o **no
-incapacitante**, para que el área de SST priorice la atención con
-evidencia histórica en vez de solo el criterio del supervisor.
-"""
+    f"""
+    <div class="hero-stat">
+        <div class="hero-stat-numero">{RECALL_TEST:.1%}</div>
+        <div class="hero-stat-etiqueta">
+            de los accidentes <strong>no incapacitantes</strong> se identifican
+            correctamente (recall en test, IC 95%: {RECALL_IC95[0]:.1%}-{RECALL_IC95[1]:.1%})
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
+
+col_antes, col_ahora = st.columns(2)
+with col_antes:
+    st.markdown("**Antes**")
+    st.caption(
+        "Priorizar la atención de un accidente dependía solo del criterio "
+        "del supervisor, sin evidencia histórica que lo respaldara."
+    )
+with col_ahora:
+    st.markdown("**Ahora**")
+    st.caption(
+        "Un modelo entrenado con 828 accidentes reales (2019-2022 + 2024, "
+        "confirmados por SST) respalda esa decisión con datos."
+    )
+
+st.divider()
 
 col1, col2, col3 = st.columns(3)
 col1.metric(
