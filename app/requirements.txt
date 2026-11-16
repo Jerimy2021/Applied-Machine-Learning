@@ -1,0 +1,10 @@
+# Dependencias de la app desplegada (Hito 3), separadas de pyproject.toml
+# a propósito: la app no reentrena ni hace EDA, solo carga un pipeline ya
+# entrenado y predice. Versiones fijas exactas (no >=) porque scikit-learn
+# no garantiza compatibilidad de pickle entre versiones: si se reentrena
+# el modelo con otra versión, hay que actualizar también este archivo.
+streamlit==1.67.0
+pandas==3.0.5
+numpy==2.5.2
+scikit-learn==1.9.1
+joblib==1.6.0
