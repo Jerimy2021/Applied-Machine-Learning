@@ -1,0 +1,104 @@
+/* Estilos de la app (Hito 3). Mismos colores que los graficos de
+   modelado en src/model.py (azul oscuro #0b4f8a = "modelo oficial"),
+   para que la app y las figuras se vean como un solo sistema visual.
+   Los selectores data-testid/data-baseweb apuntan a la estructura
+   interna de Streamlit 1.67.0 (app/requirements.txt); si se actualiza
+   esa version, hay que revisar que sigan existiendo. */
+
+:root {
+    --color-primario: #0b4f8a;
+    --color-primario-oscuro: #063a66;
+    --color-texto: #0b0b0b;
+    --color-texto-secundario: #52514e;
+    --color-borde: #d9dfe6;
+    --color-fondo-secundario: #eef1f5;
+}
+
+/* Ancho de columna acotado: lee mejor en escritorio sin ahogar las
+   paginas en layout="wide" (el dashboard muestra imagenes de a 2
+   columnas). */
+.block-container {
+    max-width: 1200px;
+    padding-top: 2.5rem;
+    padding-bottom: 3rem;
+}
+
+/* El menu hamburguesa y el pie "Made with Streamlit" son ruido visual
+   para una app ya terminada, no aportan a la presentacion. */
+#MainMenu, footer {
+    visibility: hidden;
+}
+
+h1 {
+    color: var(--color-primario);
+    font-weight: 700;
+    border-bottom: 3px solid var(--color-primario);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+h2, h3 {
+    color: var(--color-texto);
+    font-weight: 600;
+}
+
+/* Metricas (st.metric) como tarjetas, no como texto plano */
+div[data-testid="stMetric"] {
+    background-color: var(--color-fondo-secundario);
+    border: 1px solid var(--color-borde);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+}
+
+div[data-testid="stMetricLabel"] {
+    color: var(--color-texto-secundario);
+}
+
+/* Pestañas (st.tabs): la activa se nota mas */
+button[data-baseweb="tab"] {
+    font-weight: 600;
+    color: var(--color-texto-secundario);
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+    color: var(--color-primario);
+}
+
+div[data-baseweb="tab-highlight"] {
+    background-color: var(--color-primario);
+}
+
+/* Cajas de alerta (warning/info/success/error): borde izquierdo en vez
+   de fondo plano, mas discreto y legible */
+div[data-testid="stAlert"] {
+    border-radius: 8px;
+    border-left: 5px solid currentColor;
+}
+
+/* Botones: el de "Predecir" del formulario y cualquier otro */
+.stButton button, button[kind="formSubmit"], button[kind="primary"] {
+    background-color: var(--color-primario);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1.6rem;
+    font-weight: 600;
+}
+
+.stButton button:hover, button[kind="formSubmit"]:hover, button[kind="primary"]:hover {
+    background-color: var(--color-primario-oscuro);
+    color: white;
+}
+
+/* Links de navegacion (st.page_link) con aspecto de tarjeta clickeable */
+a[data-testid="stPageLink"] {
+    border: 1px solid var(--color-borde);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    margin-bottom: 0.4rem;
+    transition: background-color 0.15s ease;
+}
+
+a[data-testid="stPageLink"]:hover {
+    background-color: var(--color-fondo-secundario);
+}

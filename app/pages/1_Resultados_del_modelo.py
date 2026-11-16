@@ -19,9 +19,10 @@ import streamlit as st
 # agrega a mano para no depender de ese detalle de implementación.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from common import DISCLAIMER, FIGURES_DIR  # noqa: E402
+from common import DISCLAIMER, FIGURES_DIR, aplicar_estilos  # noqa: E402
 
 st.set_page_config(page_title="Resultados del modelo", layout="wide")
+aplicar_estilos()
 
 st.title("Resultados del modelo (Hito 2)")
 st.caption(

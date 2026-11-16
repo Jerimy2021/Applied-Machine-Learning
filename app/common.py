@@ -29,6 +29,17 @@ DISCLAIMER = (
 )
 
 
+def aplicar_estilos() -> None:
+    """
+    Inyecta app/estilos.css en la página actual. Se llama al inicio de
+    cada página (Inicio.py y cada archivo de pages/), porque Streamlit
+    no comparte el `<head>` entre páginas de una app multipágina.
+    """
+    ruta_css = Path(__file__).resolve().parent / "estilos.css"
+    css = ruta_css.read_text(encoding="utf-8")
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
+
 @st.cache_resource
 def cargar_pipeline():
     """

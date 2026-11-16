@@ -5,9 +5,10 @@ la página de predicción, no solo acá).
 """
 
 import streamlit as st
-from common import DISCLAIMER, RECALL_IC95, RECALL_TEST
+from common import DISCLAIMER, RECALL_IC95, RECALL_TEST, aplicar_estilos
 
 st.set_page_config(page_title="SST: predicción de accidentes", layout="centered")
+aplicar_estilos()
 
 st.title("Análisis predictivo de accidentes SST")
 st.caption("Proyecto del curso de Machine Learning Aplicado, Ingeniería Industrial")
@@ -36,8 +37,11 @@ col3.metric(
 st.warning(DISCLAIMER)
 
 st.markdown("### ¿Qué quieres ver?")
-st.page_link("pages/1_Resultados_del_modelo.py", label="Resultados del modelo (dashboard)")
-st.page_link("pages/2_Hacer_una_prediccion.py", label="Hacer una predicción")
+col_dashboard, col_prediccion = st.columns(2)
+with col_dashboard:
+    st.page_link("pages/1_Resultados_del_modelo.py", label="Resultados del modelo (dashboard)")
+with col_prediccion:
+    st.page_link("pages/2_Hacer_una_prediccion.py", label="Hacer una predicción")
 
 st.divider()
 st.caption(

@@ -19,9 +19,10 @@ import streamlit as st
 # agrega a mano para no depender de ese detalle de implementación.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from common import DISCLAIMER, cargar_categorias, cargar_pipeline  # noqa: E402
+from common import DISCLAIMER, aplicar_estilos, cargar_categorias, cargar_pipeline  # noqa: E402
 
 st.set_page_config(page_title="Hacer una predicción", layout="centered")
+aplicar_estilos()
 
 st.title("Hacer una predicción")
 st.caption(
