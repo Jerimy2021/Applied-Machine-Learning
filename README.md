@@ -397,8 +397,10 @@ pip install -r app/requirements.txt
 streamlit run app/Inicio.py
 ```
 
-**Desplegado:** público, sin login, en una instancia de AWS Lightsail
-(ver `deploy/README.md`). URL: _pendiente del primer despliegue_.
+**Despliegue:** se probó en una instancia de AWS Lightsail (ver
+`deploy/README.md`) y se dio de baja por costo (Lightsail no tiene un
+tier realmente gratis). Evaluando Streamlit Community Cloud (gratis,
+pensado para esto) como alternativa. URL: _pendiente_.
 
 ## Estructura de carpetas
 

@@ -11,7 +11,7 @@ APP_DIR="/opt/aml-app"
 SERVICE_USER="ec2-user"
 VENV_DIR="$APP_DIR/.venv-app"
 
-dnf install -y git python3.11 python3.11-pip
+dnf install -y git python3.12 python3.12-pip
 
 if [ -d "$APP_DIR/.git" ]; then
   git -C "$APP_DIR" fetch origin "$REPO_BRANCH"
@@ -20,7 +20,7 @@ else
   git clone --branch "$REPO_BRANCH" --depth 1 "$REPO_URL" "$APP_DIR"
 fi
 
-python3.11 -m venv "$VENV_DIR"
+python3.12 -m venv "$VENV_DIR"
 "$VENV_DIR/bin/pip" install --upgrade pip
 "$VENV_DIR/bin/pip" install -r "$APP_DIR/app/requirements.txt"
 
