@@ -38,7 +38,8 @@ def _imagen_centrada(ruta, ancho_relativo: int = 4) -> None:
     with columnas[1]:
         st.image(str(ruta), width="stretch")
 
-st.title("Resultados del modelo (Hito 2)")
+
+st.title("Resultados del modelo")
 st.caption(
     "Detalle completo en el "
     "[README](https://github.com/Jerimy2021/Applied-Machine-Learning#9-modelado-hito-2) "
@@ -66,13 +67,17 @@ validación cruzada agrupada por evento, solo en train):
 - SVM (RBF)
 - Random Forest
 - Gradient Boosting
-
-4 de los 5 superan el objetivo de recall ≥ 0.70. Solo KNN queda abajo.
 """
     )
     st.image(str(FIGURES_DIR / "modelado_comparacion_cv.png"))
+    st.caption("4 de los 5 superan el objetivo de recall ≥ 0.70. Solo KNN queda abajo.")
 
-    st.markdown("#### De la validación cruzada al test: por qué gana Random Forest")
+    st.divider()
+    st.markdown("#### Pero el ganador no es el que mejor se vio en la comparación")
+    st.markdown(
+        "Se afinan con más detalle los 2 más prometedores: **SVM**, que lideraba, y "
+        "**Random Forest**."
+    )
     st.table(
         pd.DataFrame(
             {
@@ -85,19 +90,11 @@ validación cruzada agrupada por evento, solo en train):
             }
         ).set_index("Modelo")
     )
-    st.markdown(
-        """
-**En palabras simples:** SVM identifica 9 de cada 10 casos leves durante
-el entrenamiento, pero en datos nuevos esa cifra cae a solo 8 de 31 (~1
-de cada 4): predice casi todo como incapacitante. Random Forest acierta
-25 de los mismos 31 casos leves (8 de cada 10), tanto en entrenamiento
-como en datos nuevos, por eso es el que se queda.
-
-SVM lideraba la comparación en validación cruzada, pero se desploma en
-test: un caso claro de sobreajuste a los pliegues de validación con tan
-pocos datos de la clase minoritaria. Random Forest se mantiene estable
-entre CV y test.
-"""
+    st.caption(
+        "SVM identificaba 9 de cada 10 casos leves en el entrenamiento, pero en "
+        "datos nuevos esa cifra cae a solo 8 de 31: sobreajuste a los pliegues de "
+        "validación. Random Forest se mantiene estable entre CV y test, por eso "
+        "es el que se queda."
     )
     # Una debajo de otra, centradas al mismo ancho relativo (no lado a
     # lado): tienen proporciones muy distintas (la de matrices es ancha y
@@ -133,23 +130,22 @@ minoritaria:
             }
         ).set_index("Etapa")
     )
-    _imagen_centrada(FIGURES_DIR / "modelado_radar_hiperparametros.png", ancho_relativo=3)
-    st.markdown(
-        """
-**En palabras simples:** de la etapa 1 a la 2 casi no cambia nada, porque
-el afinado solo prueba variantes cercanas al mejor resultado de la
-exploración. El salto grande es de la 2 a la 3: con 828 filas en vez de
-564 (47% más datos, y mejor balanceadas), el modelo puede permitirse
-árboles más profundos y ramas finales más chicas sin memorizar ruido, y
-necesita menos árboles para que el voto se estabilice. `max_features='sqrt'`
-no cambia en ninguna etapa.
+    _imagen_centrada(FIGURES_DIR / "modelado_radar_hiperparametros.png", ancho_relativo=4)
+    st.caption(
+        "De la etapa 1 a la 2 casi no cambia nada: el afinado solo prueba "
+        "variantes cercanas al mejor resultado de la exploración. El salto "
+        "grande es de la 2 a la 3, con 828 filas en vez de 564: el modelo "
+        "puede permitirse árboles más profundos y ramas finales más chicas, "
+        "y necesita menos árboles para estabilizar el voto."
+    )
 
-**Validación con varias semillas:** una sola partición train/test puede
-ser optimista o pesimista por azar. Reajustando el mismo Random Forest
-sobre 10 particiones distintas (2019-2022 solo), el recall va de 0.710 a
-0.968 (media 0.813, desviación 0.080): las 10 superan el objetivo, el
-modelo no depende de haber tenido suerte con una partición.
-"""
+    st.divider()
+    st.markdown("#### Validación con varias semillas")
+    st.markdown(
+        "Una sola partición train/test puede ser optimista o pesimista por azar. "
+        "Reajustando el mismo Random Forest sobre 10 particiones distintas "
+        "(2019-2022 solo), el recall va de 0.710 a 0.968 (media 0.813): las 10 "
+        "superan el objetivo."
     )
 
 with tab_smotenc:
@@ -183,38 +179,34 @@ de SST.
         ).set_index("Configuración")
     )
     st.image(str(FIGURES_DIR / "modelado_comparacion_smote.png"))
-    st.markdown(
-        """
-**En palabras simples:** a más balanceo sintético, menos recall, sin
-excepciones. El objetivo del proyecto prioriza recall sobre precisión, y
-`class_weight="balanced"` ya ataca eso directamente. SMOTENC hace lo
-contrario: suaviza la frontera de decisión, lo que mejora precisión y F1
-pero vuelve al modelo más conservador para marcar "no incapacitante".
-**No se adopta SMOTENC.**
-"""
+    st.caption(
+        "A más balanceo sintético, menos recall, sin excepciones en las 5 "
+        "intensidades probadas. No se adopta SMOTENC."
     )
 
 with tab_2024:
     st.markdown(
-        """
-`accidentes_2024.csv` no tiene `gravedad`, así que se usa como proxy
-`dias_dm > 0` de `es_incapacitante`: coincide con la etiqueta real en 458
-de 459 filas del histórico 2019-2022, y **SST confirmó que la misma
-equivalencia aplica a la fuente 2024**. Con la población combinada (828
-filas, mejor balanceada, 59.3%/40.7% frente al 72.5%/27.5% de 2019-2022
-solo), Random Forest reafinado da un recall de 0.868 en test (IC 95%:
-0.767 a 0.929) y, en 10 semillas, un rango de 0.806 a 0.882 (media 0.852,
-desviación 0.025): más alto y más estable que con 2019-2022 solo (media
-0.813, desviación 0.080).
-"""
+        "`accidentes_2024.csv` no tiene `gravedad`; se usa un proxy "
+        "(`dias_dm > 0`) que **SST confirmó** como equivalente."
     )
-    st.image(str(FIGURES_DIR / "modelado_comparacion_2024.png"))
+    col_recall, col_balance = st.columns(2)
+    col_recall.metric(
+        "Recall en test",
+        "0.868",
+        delta="vs. 0.806 solo con 2019-2022",
+        help="Población combinada: 828 filas (2019-2022 + 2024)",
+    )
+    col_balance.metric(
+        "Balance de clases (incapacitante / no)",
+        "59.3% / 40.7%",
+        help="Antes de sumar 2024: 72.5% / 27.5%",
+    )
+    _imagen_centrada(FIGURES_DIR / "modelado_comparacion_2024.png", ancho_relativo=5)
     st.success(
         "Con el proxy ya confirmado por SST, este modelo pasa a ser la "
-        "recomendación oficial del Hito 2, en lugar del entrenado solo "
-        "con 2019-2022: mismo algoritmo y mismo criterio de selección, "
-        "sobre una población más grande y mejor balanceada. Es el modelo "
-        "que sirve esta app."
+        "recomendación oficial del Hito 2: mismo algoritmo y mismo criterio "
+        "de selección, sobre una población más grande y mejor balanceada. "
+        "Es el modelo que sirve esta app."
     )
 
 with tab_conclusiones:
@@ -230,16 +222,5 @@ with tab_conclusiones:
    único que se mantuvo estable al pasar a datos nuevos.
 3. **SMOTENC se probó y no ayudó.** Más balanceo sintético significó
    siempre menos recall, nunca más.
-"""
-    )
-
-    st.markdown("#### Alcance de este proyecto")
-    st.markdown(
-        """
-- `lugar`, `fuente_peligro` y `puesto_trabajo` no se agruparon (tienen
-  cientos de categorías cada una); el modelo las usa tal cual.
-- `experiencia_puesto_meses`, `sexo`, `area_responsabilidad` y `anio`
-  quedan fuera del modelo.
-- El texto libre de la descripción del accidente tampoco se usa.
 """
     )

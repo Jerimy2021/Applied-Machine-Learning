@@ -33,10 +33,16 @@ st.caption(
 categorias = cargar_categorias()
 pipeline = cargar_pipeline()
 
+# "Edad desconocida" queda fuera del st.form a propósito: un widget
+# dentro de un formulario no dispara un rerun al cambiar (solo al
+# enviarlo), así que si viviera adentro, marcarlo no deshabilitaría el
+# campo de edad hasta recién apretar "Predecir". Afuera, reacciona al
+# toque, como se espera.
+edad_desconocida = st.checkbox("No sé la edad de la persona")
+
 with st.form("formulario_prediccion"):
     col_edad, col_turno, col_mes = st.columns(3)
     with col_edad:
-        edad_desconocida = st.checkbox("Edad desconocida")
         edad_anios = st.number_input(
             "Edad (años)",
             min_value=int(categorias["edad_anios"]["min"]),
