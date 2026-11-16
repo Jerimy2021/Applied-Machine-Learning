@@ -357,19 +357,15 @@ el recall de forma monótona cuanto más balanceo sintético se agrega,
 porque suaviza la frontera de decisión justo en la dirección contraria a
 la que pide el objetivo del proyecto.
 
-**Alcance de este proyecto:** `lugar`, `fuente_peligro` y
-`puesto_trabajo` (cientos de categorías, muchas con un solo caso) no se
-agruparon; el modelo las usa tal cual. No es un pendiente de limpieza
-sin resolver: el proyecto tiene 3 hitos y los 3 están completos (ver
-wiki, [Pendientes y próximos pasos](https://github.com/Jerimy2021/Applied-Machine-Learning/wiki/Pendientes-y-pr%C3%B3ximos-pasos)),
-agrupar esas categorías queda fuera de ese alcance, no diferido a un
-hito que ya pasó. La app desplegada (`app/`, ver sección 11) usa el
-modelo del Hito 2 **sin cambios**.
-
-**Limitaciones:** `experiencia_puesto_meses`, `sexo`,
-`area_responsabilidad` y `anio` quedan fuera de X (su disponibilidad
-depende de la clase objetivo en el período de entrenamiento, ver sección
-5). El texto libre (`descripcion_accidente`) tampoco se usa.
+**Limitaciones:** `lugar`, `fuente_peligro` y `puesto_trabajo` (cientos
+de categorías, muchas con un solo caso) no se agruparon, el modelo las
+usa tal cual (agruparlas requiere un criterio de dominio de SST que no
+estuvo disponible, ver bitácora en `reports/diccionario_datos.md`);
+`experiencia_puesto_meses`, `sexo`, `area_responsabilidad` y `anio`
+quedan fuera de X (su disponibilidad depende de la clase objetivo en el
+período de entrenamiento, ver sección 5); el texto libre
+(`descripcion_accidente`) tampoco se usa. La app desplegada (`app/`,
+ver sección 11) usa el modelo del Hito 2 **sin cambios**.
 
 ## 11. App del Hito 3 (dashboard + predicción)
 
