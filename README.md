@@ -398,7 +398,7 @@ streamlit run app/Inicio.py
 ```
 
 **Desplegado:** público, sin login, en una instancia de AWS Lightsail
-(ver `deploy/README.md`). URL: _pendiente del primer despliegue_.
+(ver `deploy/README.md`). URL: http://184.195.71.103/
 
 ## Estructura de carpetas
 
