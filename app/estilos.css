@@ -14,18 +14,38 @@
     --color-fondo-secundario: #eef1f5;
 }
 
-/* Numero grande de la pagina de Inicio (recall del modelo): es el dato
-   que mas importa, tiene que verse primero y dominar la pagina. */
+/* Tarjeta de entrada de la pagina de Inicio: degradado suave + sombra +
+   animacion de aparicion. Es la unica animacion de toda la app, a
+   proposito: se usa donde mas importa causar una buena primera
+   impresion, no se reparte por todos lados. */
+@keyframes aparecer-subiendo {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-card {
+    background: linear-gradient(135deg, #eef1f5 0%, #ffffff 100%);
+    border: 1px solid var(--color-borde);
+    border-radius: 18px;
+    padding: 2rem 1.5rem 1.8rem 1.5rem;
+    box-shadow: 0 6px 24px rgba(11, 79, 138, 0.1);
+    animation: aparecer-subiendo 0.5s ease-out;
+}
+
+/* Numero grande (recall del modelo): el dato que mas importa, tiene que
+   verse primero y dominar la pagina. */
 .hero-stat {
     text-align: center;
-    padding: 1.5rem 1rem 2rem 1rem;
 }
 
 .hero-stat-numero {
     font-size: 4.5rem;
     font-weight: 800;
-    color: var(--color-primario);
     line-height: 1;
+    background: linear-gradient(135deg, var(--color-primario) 0%, var(--color-primario-oscuro) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
 }
 
 .hero-stat-etiqueta {
@@ -33,6 +53,39 @@
     font-size: 1rem;
     max-width: 480px;
     margin: 0.6rem auto 0 auto;
+}
+
+/* "Antes -> ahora": una sola linea de 2 etiquetas, no 2 parrafos */
+.antes-ahora {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-top: 1.5rem;
+    animation: aparecer-subiendo 0.6s ease-out 0.1s both;
+}
+
+.antes-ahora .etiqueta {
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.antes-ahora .antes {
+    background-color: #f3eceb;
+    color: #8a4a42;
+}
+
+.antes-ahora .ahora {
+    background-color: #e7f3ea;
+    color: #1e6b3a;
+}
+
+.antes-ahora .flecha {
+    color: var(--color-texto-secundario);
+    font-size: 1.1rem;
 }
 
 /* Ancho de columna acotado: lee mejor en escritorio sin ahogar las
@@ -109,17 +162,23 @@ div[data-testid="stAlert"] {
 .stButton button:hover, button[kind="formSubmit"]:hover, button[kind="primary"]:hover {
     background-color: var(--color-primario-oscuro);
     color: white;
+    box-shadow: 0 4px 14px rgba(11, 79, 138, 0.25);
 }
 
-/* Links de navegacion (st.page_link) con aspecto de tarjeta clickeable */
+/* Links de navegacion (st.page_link) con aspecto de tarjeta clickeable,
+   que se "levanta" un poco al pasar el mouse */
 a[data-testid="stPageLink"] {
     border: 1px solid var(--color-borde);
-    border-radius: 8px;
-    padding: 0.6rem 1rem;
+    border-radius: 10px;
+    padding: 0.75rem 1.1rem;
     margin-bottom: 0.4rem;
-    transition: background-color 0.15s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 a[data-testid="stPageLink"]:hover {
     background-color: var(--color-fondo-secundario);
+    border-color: var(--color-primario);
+    box-shadow: 0 6px 16px rgba(11, 79, 138, 0.14);
+    transform: translateY(-2px);
 }

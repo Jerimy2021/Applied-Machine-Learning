@@ -58,11 +58,16 @@ tab_comparacion, tab_hiperparametros, tab_smotenc, tab_2024, tab_conclusiones = 
 with tab_comparacion:
     st.markdown(
         """
-5 algoritmos de scikit-learn, comparados con `RandomizedSearchCV`
-(40 combinaciones, validación cruzada de 5 pliegues agrupada por evento,
-solo en train): Regresión Logística, KNN, SVM (RBF), Random Forest y
-Gradient Boosting. 4 de los 5 superan el recall de 0.70 que fija el
-objetivo del proyecto; KNN queda abajo (no soporta `class_weight`).
+**5 algoritmos comparados** (búsqueda aleatoria de hiperparámetros,
+validación cruzada agrupada por evento, solo en train):
+
+- Regresión Logística
+- KNN
+- SVM (RBF)
+- Random Forest
+- Gradient Boosting
+
+4 de los 5 superan el objetivo de recall ≥ 0.70. Solo KNN queda abajo.
 """
     )
     st.image(str(FIGURES_DIR / "modelado_comparacion_cv.png"))
@@ -213,46 +218,38 @@ desviación 0.025): más alto y más estable que con 2019-2022 solo (media
     )
 
 with tab_conclusiones:
+    _imagen_centrada(FIGURES_DIR / "resumen_objetivo_final.png", ancho_relativo=5)
+
+    st.markdown("#### En 3 ideas")
     st.markdown(
         """
-El objetivo medible del proyecto era clasificar cada evento como
-incapacitante/no incapacitante con **recall ≥ 0.70** sobre la clase no
-incapacitante. El modelo recomendado lo supera con margen: **recall
-0.868 en test** (IC 95%: 0.767-0.929), consistente en 10 particiones
-distintas (media 0.852, desviación 0.025).
-
-De los 5 algoritmos comparados, Random Forest ganó no por el mejor score
-en validación cruzada (ahí lideraba SVM, 0.880), sino por ser el único
-estable entre CV y test. Esa diferencia entre "qué dice la validación
-cruzada" y "qué pasa en datos nuevos" es, en retrospectiva, el hallazgo
-metodológico más importante del Hito 2.
-
-SMOTENC se evaluó como alternativa para el desbalance de clases y se
-descartó con evidencia cuantitativa: empeora el recall de forma monótona
-cuanto más balanceo sintético se agrega.
+1. **El objetivo se cumplió con margen.** Se pedía recall ≥ 0.70, el
+   modelo llega a 0.868.
+2. **Ganó por ser confiable, no por el score más alto.** Random Forest
+   no lideraba la validación cruzada (SVM sí, con 0.880), pero fue el
+   único que se mantuvo estable al pasar a datos nuevos.
+3. **SMOTENC se probó y no ayudó.** Más balanceo sintético significó
+   siempre menos recall, nunca más.
 """
     )
-    _imagen_centrada(FIGURES_DIR / "modelado_comparacion_2024.png", ancho_relativo=5)
-    st.caption(
-        "Sumar 2024 al entrenamiento sube el recall promedio y lo hace "
-        "más estable entre particiones: ambas configuraciones superan el "
-        "objetivo de recall ≥ 0.70, pero la que suma 2024 (la oficial) "
-        "lo hace con más margen y menos variación entre semillas."
-    )
-    st.info(
-        "**Qué sigue abierto, a propósito:** agrupar `lugar`, "
-        "`fuente_peligro` y `puesto_trabajo` (cientos de categorías, "
-        "muchas con un solo caso) queda diferido al Hito 3 como trabajo "
-        "de *feature engineering*, no es un pendiente de limpieza de este "
-        "modelo. Esta app despliega el modelo del Hito 2 sin cambios: el "
-        "agrupamiento de categorías no es parte de esta entrega."
-    )
+
+    st.markdown("#### Qué sigue abierto, a propósito")
     st.markdown(
         """
-**Limitaciones:** `experiencia_puesto_meses`, `sexo`,
-`area_responsabilidad` y `anio` quedan fuera de X (su disponibilidad
-depende de la clase objetivo en el período de entrenamiento). El texto
-libre (`descripcion_accidente`) tampoco se usa todavía.
+- Agrupar `lugar`, `fuente_peligro` y `puesto_trabajo` (tienen cientos
+  de categorías) queda para el Hito 3.
+- Esta app usa el modelo del Hito 2 tal cual, sin ese agrupamiento
+  todavía.
+"""
+    )
+
+    st.markdown("#### Limitaciones")
+    st.markdown(
+        """
+- `experiencia_puesto_meses`, `sexo`, `area_responsabilidad` y `anio`
+  quedan fuera del modelo.
+- El texto libre de la descripción del accidente tampoco se usa
+  todavía.
 """
     )
     st.warning(DISCLAIMER)

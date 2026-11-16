@@ -13,34 +13,29 @@ aplicar_estilos()
 st.title("Análisis predictivo de accidentes SST")
 st.caption("Proyecto del curso de Machine Learning Aplicado, Ingeniería Industrial")
 
-# Numero grande primero (lo que mas importa, no una metrica chica mas
-# entre otras tres): ver el "antes/ahora" de abajo para el porque.
+# Numero grande primero (lo que mas importa), dentro de una tarjeta con
+# degradado y animacion de entrada. El "antes/ahora" va como una sola
+# linea de 2 etiquetas, no 2 bloques de texto, para que se lea de un
+# vistazo en vez de leerse como un parrafo mas.
 st.markdown(
     f"""
-    <div class="hero-stat">
-        <div class="hero-stat-numero">{RECALL_TEST:.1%}</div>
-        <div class="hero-stat-etiqueta">
-            de los accidentes <strong>no incapacitantes</strong> se identifican
-            correctamente (recall en test, IC 95%: {RECALL_IC95[0]:.1%}-{RECALL_IC95[1]:.1%})
+    <div class="hero-card">
+        <div class="hero-stat">
+            <div class="hero-stat-numero">{RECALL_TEST:.1%}</div>
+            <div class="hero-stat-etiqueta">
+                de los accidentes <strong>no incapacitantes</strong> se identifican
+                correctamente (recall en test)
+            </div>
+        </div>
+        <div class="antes-ahora">
+            <span class="etiqueta antes">Antes: criterio del supervisor</span>
+            <span class="flecha">&rarr;</span>
+            <span class="etiqueta ahora">Ahora: modelo entrenado con 828 casos reales</span>
         </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
-
-col_antes, col_ahora = st.columns(2)
-with col_antes:
-    st.markdown("**Antes**")
-    st.caption(
-        "Priorizar la atención de un accidente dependía solo del criterio "
-        "del supervisor, sin evidencia histórica que lo respaldara."
-    )
-with col_ahora:
-    st.markdown("**Ahora**")
-    st.caption(
-        "Un modelo entrenado con 828 accidentes reales (2019-2022 + 2024, "
-        "confirmados por SST) respalda esa decisión con datos."
-    )
 
 st.divider()
 
