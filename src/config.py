@@ -22,6 +22,11 @@ REPORTS_DIR = ROOT_DIR / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
 DICCIONARIO_DATOS_PATH = REPORTS_DIR / "diccionario_datos.md"
 
+# --- Rutas de modelos exportados ---
+# Artefactos del modelo final (pipeline entrenado + categorías de X), para
+# que la app de Hito 3 los sirva sin reentrenar ni depender de data/processed.
+MODELS_DIR = ROOT_DIR / "models"
+
 # --- Constantes del proyecto ---
 # Nombre de la columna estándar de fecha de evento (ver estándar en CLAUDE.md)
 COL_FECHA_EVENTO = "fecha_evento"

@@ -8,6 +8,9 @@ importan y muestran (ver CLAUDE.md); nada aquí aprende de los datos, por
 eso puede correr antes de separar train y test.
 """
 
+import json
+from pathlib import Path
+
 import pandas as pd
 
 from src.clean import derive_es_incapacitante
@@ -160,3 +163,57 @@ def combinar_con_2024(
         [poblacion_historico[COLUMNAS_COMUNES_MODELADO], poblacion_2024[COLUMNAS_COMUNES_MODELADO]],
         ignore_index=True,
     )
+
+
+_ORDEN_MESES = [
+    "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+    "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
+]
+
+
+def exportar_categorias_x(X: pd.DataFrame, ruta: Path) -> Path:
+    """
+    Vuelca a JSON, por cada columna de `COLUMNAS_CATEGORICAS`, los valores
+    que vio el modelo en train (para poblar los desplegables del
+    formulario de predicción de la app de Hito 3, ver `app/`) más el
+    rango de `edad_anios`.
+
+    Las opciones salen solo de `X` (el training real), nunca de una lista
+    escrita a mano: así la app nunca puede mandarle al pipeline ya
+    entrenado una categoría que no vio (el `OneHotEncoder` tiene
+    `handle_unknown="infrequent_if_exist"`, pero no todas las columnas
+    tienen bucket "infrequent" creado, así que una categoría inventada
+    podría fallar en `transform`).
+
+    Orden de cada lista: por frecuencia descendente (la opción más común
+    queda primera/preseleccionada), salvo `mes` que va en orden
+    calendario. En ambos casos, `SIN_DATO` queda siempre al final aunque
+    sea la más frecuente (pasa en `programa`/`lugar` por las filas de
+    2024, que no traen esas columnas): alguien llenando el formulario con
+    un dato real no debería ver "sin dato" preseleccionado.
+    """
+    categorias = {}
+    for columna in COLUMNAS_CATEGORICAS:
+        presentes = set(X[columna].dropna().astype(str).unique())
+        if columna == "mes":
+            orden = [mes for mes in _ORDEN_MESES if mes in presentes]
+        else:
+            conteo = X[columna].value_counts()
+            orden = [v for v in conteo.index.astype(str).tolist() if v != SIN_DATO]
+        if SIN_DATO in presentes:
+            orden.append(SIN_DATO)
+        categorias[columna] = orden
+
+    edad = X[COLUMNA_NUMERICA].dropna()
+    contenido = {
+        "categoricas": categorias,
+        "edad_anios": {
+            "min": float(edad.min()),
+            "mediana": float(edad.median()),
+            "max": float(edad.max()),
+        },
+    }
+
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    ruta.write_text(json.dumps(contenido, ensure_ascii=False, indent=2), encoding="utf-8")
+    return ruta

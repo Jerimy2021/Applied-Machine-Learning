@@ -7,6 +7,9 @@ con el dataset completo (ver reports/estrategia_data_preparation.md,
 sección 3.6). Los notebooks solo importan y muestran (ver CLAUDE.md).
 """
 
+from pathlib import Path
+
+import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -693,3 +696,24 @@ def graficar_radar_hiperparametros(configuraciones: dict) -> plt.Figure:
         texto.set_color(INK)
     fig.tight_layout(rect=[0, 0.07, 1, 1])
     return fig
+
+
+def exportar_pipeline(pipeline, ruta: Path) -> Path:
+    """
+    Guarda el pipeline final (preprocesador + modelo, ya entrenado) con
+    `joblib.dump`, para la app de Hito 3 (ver `app/`).
+
+    Se exporta el pipeline ya ajustado, no el código que lo construye: la
+    app desplegada solo necesita `joblib`+`pandas`+`scikit-learn` para
+    predecir, sin reentrenar ni importar `imbalanced-learn`/`src.prepare`/
+    `src.ingest` ni leer `data/processed/` en producción.
+
+    Si se reentrena con una versión distinta de scikit-learn, hay que
+    volver a correr esta exportación (no alcanza con copiar un .joblib
+    viejo): scikit-learn no garantiza compatibilidad de pickle entre
+    versiones. La versión usada para generar el .joblib commiteado debe
+    coincidir con la fijada en `app/requirements.txt`.
+    """
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(pipeline, ruta)
+    return ruta
