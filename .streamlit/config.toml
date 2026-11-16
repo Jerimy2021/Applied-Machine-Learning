@@ -1,0 +1,13 @@
+# Tema de la app (Hito 3). Mismos colores que ya usan los gráficos del
+# modelado en src/model.py (azul oscuro = "modelo oficial", fondo claro
+# neutro), para que la app y las figuras se vean como un solo sistema.
+[theme]
+base = "light"
+primaryColor = "#0b4f8a"
+backgroundColor = "#fcfcfb"
+secondaryBackgroundColor = "#eef1f5"
+textColor = "#0b0b0b"
+font = "sans-serif"
+
+[browser]
+gatherUsageStats = false

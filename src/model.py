@@ -717,3 +717,50 @@ def exportar_pipeline(pipeline, ruta: Path) -> Path:
     ruta.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(pipeline, ruta)
     return ruta
+
+
+def graficar_resumen_objetivo(
+    recall_resultado: float = 0.868, objetivo: float = 0.70
+) -> plt.Figure:
+    """
+    Resumen ejecutivo de una sola barra: el recall del modelo final
+    contra el objetivo del README (sección 2). Pensado para la sección
+    "Conclusiones finales" de la app de Hito 3 (`app/`), donde se pidió
+    una imagen propia en vez de reciclar un gráfico ya mostrado en otra
+    pestaña — simple a propósito, un solo número grande.
+    """
+    INK, MUTED, GRID, SURFACE, BUENO = "#0b0b0b", "#898781", "#e1e0d9", "#fcfcfb", "#0ca30c"
+
+    fig, ax = plt.subplots(figsize=(7, 2.4))
+    fig.patch.set_facecolor(SURFACE)
+    ax.set_facecolor(SURFACE)
+
+    ax.barh([0], [recall_resultado], color=BUENO, height=0.5, zorder=3)
+    ax.axvline(objetivo, color=MUTED, linestyle="--", linewidth=1.5, zorder=2)
+
+    ax.annotate(
+        f"{recall_resultado:.3f}", (recall_resultado, 0), xytext=(12, 0),
+        textcoords="offset points", va="center", fontsize=22, fontweight="bold", color=INK,
+    )
+    ax.annotate(
+        f"Objetivo del proyecto: {objetivo:.2f}", (objetivo, 0.38), xytext=(0, 2),
+        textcoords="offset points", ha="center", fontsize=9.5, color=MUTED,
+    )
+
+    ax.set_xlim(0, 1)
+    ax.set_ylim(-0.5, 0.6)
+    ax.set_yticks([])
+    ax.set_xlabel(
+        "Recall de la clase minoritaria (no incapacitante) en test", color=MUTED, fontsize=9.5,
+    )
+    ax.grid(axis="x", color=GRID, linewidth=0.8, zorder=0)
+    for lado in ("top", "right", "left"):
+        ax.spines[lado].set_visible(False)
+    ax.spines["bottom"].set_color(MUTED)
+    ax.tick_params(colors=MUTED)
+    ax.set_title(
+        "El modelo recomendado supera el objetivo del proyecto",
+        color=INK, fontsize=13, fontweight="bold", loc="left", pad=12,
+    )
+    fig.tight_layout()
+    return fig

@@ -5,20 +5,39 @@ la página de predicción, no solo acá).
 """
 
 import streamlit as st
-from common import DISCLAIMER, RECALL_IC95, RECALL_TEST
+from common import RECALL_IC95, RECALL_TEST, aplicar_estilos
 
 st.set_page_config(page_title="SST: predicción de accidentes", layout="centered")
+aplicar_estilos()
 
 st.title("Análisis predictivo de accidentes SST")
 st.caption("Proyecto del curso de Machine Learning Aplicado, Ingeniería Industrial")
 
+# Numero grande primero (lo que mas importa), dentro de una tarjeta con
+# degradado y animacion de entrada. El "antes/ahora" va como una sola
+# linea de 2 etiquetas, no 2 bloques de texto, para que se lea de un
+# vistazo en vez de leerse como un parrafo mas.
 st.markdown(
-    """
-Clasifica cada accidente reportado como **incapacitante** o **no
-incapacitante**, para que el área de SST priorice la atención con
-evidencia histórica en vez de solo el criterio del supervisor.
-"""
+    f"""
+    <div class="hero-card">
+        <div class="hero-stat">
+            <div class="hero-stat-numero">{RECALL_TEST:.1%}</div>
+            <div class="hero-stat-etiqueta">
+                de los accidentes leves se detectan correctamente,
+                validado con datos reales de prueba
+            </div>
+        </div>
+        <div class="antes-ahora">
+            <span class="etiqueta antes">Antes: criterio del supervisor</span>
+            <span class="flecha">&rarr;</span>
+            <span class="etiqueta ahora">Ahora: modelo entrenado con 828 casos reales</span>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
+
+st.divider()
 
 col1, col2, col3 = st.columns(3)
 col1.metric(
@@ -33,11 +52,12 @@ col3.metric(
     help="Histórico 2019-2022 + 2024, confirmado por SST",
 )
 
-st.warning(DISCLAIMER)
-
 st.markdown("### ¿Qué quieres ver?")
-st.page_link("pages/1_Resultados_del_modelo.py", label="Resultados del modelo (dashboard)")
-st.page_link("pages/2_Hacer_una_prediccion.py", label="Hacer una predicción")
+col_dashboard, col_prediccion = st.columns(2)
+with col_dashboard:
+    st.page_link("pages/1_Resultados_del_modelo.py", label="Resultados del modelo (dashboard)")
+with col_prediccion:
+    st.page_link("pages/2_Hacer_una_prediccion.py", label="Hacer una predicción")
 
 st.divider()
 st.caption(

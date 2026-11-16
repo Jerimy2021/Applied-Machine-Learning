@@ -1,0 +1,357 @@
+/* Estilos de la app (Hito 3). Mismos colores que los graficos de
+   modelado en src/model.py (azul oscuro #0b4f8a = "modelo oficial"),
+   para que la app y las figuras se vean como un solo sistema visual.
+   Los selectores data-testid/data-baseweb apuntan a la estructura
+   interna de Streamlit 1.67.0 (app/requirements.txt); si se actualiza
+   esa version, hay que revisar que sigan existiendo. */
+
+:root {
+    --color-primario: #0b4f8a;
+    --color-primario-oscuro: #063a66;
+    --color-texto: #0b0b0b;
+    --color-texto-secundario: #52514e;
+    --color-borde: #d9dfe6;
+    --color-fondo-secundario: #eef1f5;
+}
+
+/* Tarjeta de entrada de la pagina de Inicio: degradado suave + sombra +
+   animacion de aparicion. Es la unica animacion de toda la app, a
+   proposito: se usa donde mas importa causar una buena primera
+   impresion, no se reparte por todos lados. */
+@keyframes aparecer-subiendo {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-card {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #eef1f5 0%, #ffffff 100%);
+    border: 1px solid var(--color-borde);
+    border-radius: 18px;
+    padding: 2rem 1.5rem 1.8rem 1.5rem;
+    box-shadow: 0 6px 24px rgba(11, 79, 138, 0.1);
+    animation: aparecer-subiendo 0.5s ease-out;
+}
+
+/* Resplandor decorativo detras del numero, muy sutil */
+.hero-card::before {
+    content: "";
+    position: absolute;
+    top: -60%;
+    left: 50%;
+    width: 420px;
+    height: 420px;
+    transform: translateX(-50%);
+    background: radial-gradient(circle, rgba(11, 79, 138, 0.12) 0%, rgba(11, 79, 138, 0) 70%);
+    pointer-events: none;
+}
+
+.hero-card > * {
+    position: relative;
+}
+
+/* Numero grande (recall del modelo): el dato que mas importa, tiene que
+   verse primero y dominar la pagina. */
+.hero-stat {
+    text-align: center;
+}
+
+.hero-stat-numero {
+    font-size: 4.5rem;
+    font-weight: 800;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--color-primario) 0%, var(--color-primario-oscuro) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.hero-stat-etiqueta {
+    color: var(--color-texto-secundario);
+    font-size: 1rem;
+    max-width: 480px;
+    margin: 0.6rem auto 0 auto;
+}
+
+/* "Antes -> ahora": una sola linea de 2 etiquetas, no 2 parrafos */
+.antes-ahora {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-top: 1.5rem;
+    animation: aparecer-subiendo 0.6s ease-out 0.1s both;
+}
+
+.antes-ahora .etiqueta {
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.antes-ahora .antes {
+    background-color: #f3eceb;
+    color: #8a4a42;
+}
+
+.antes-ahora .ahora {
+    background-color: #e7f3ea;
+    color: #1e6b3a;
+}
+
+.antes-ahora .flecha {
+    color: var(--color-texto-secundario);
+    font-size: 1.1rem;
+}
+
+/* Ancho de columna acotado: lee mejor en escritorio sin ahogar las
+   paginas en layout="wide" (el dashboard muestra imagenes de a 2
+   columnas). */
+.block-container {
+    max-width: 1200px;
+    padding-top: 2.5rem;
+    padding-bottom: 3rem;
+}
+
+/* El menu hamburguesa y el pie "Made with Streamlit" son ruido visual
+   para una app ya terminada, no aportan a la presentacion. */
+#MainMenu, footer {
+    visibility: hidden;
+}
+
+h1 {
+    color: var(--color-primario);
+    font-weight: 700;
+    border-bottom: 3px solid var(--color-primario);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+h2, h3 {
+    color: var(--color-texto);
+    font-weight: 600;
+}
+
+/* Metricas (st.metric) como tarjetas, no como texto plano, con el
+   mismo "se levanta un poco" de los links de navegacion */
+div[data-testid="stMetric"] {
+    background-color: var(--color-fondo-secundario);
+    border: 1px solid var(--color-borde);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+div[data-testid="stMetric"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(11, 79, 138, 0.1);
+}
+
+div[data-testid="stMetricLabel"] {
+    color: var(--color-texto-secundario);
+}
+
+/* Pestañas (st.tabs): la activa se nota mas */
+button[data-baseweb="tab"] {
+    font-weight: 600;
+    color: var(--color-texto-secundario);
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+    color: var(--color-primario);
+}
+
+div[data-baseweb="tab-highlight"] {
+    background-color: var(--color-primario);
+}
+
+/* Cajas de alerta (warning/info/success/error): borde izquierdo en vez
+   de fondo plano, mas discreto y legible */
+div[data-testid="stAlert"] {
+    border-radius: 8px;
+    border-left: 5px solid currentColor;
+}
+
+/* Formulario de prediccion: tarjeta propia, no el fondo blanco plano
+   por defecto */
+div[data-testid="stForm"] {
+    background-color: var(--color-fondo-secundario);
+    border: 1px solid var(--color-borde);
+    border-radius: 14px;
+    padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+}
+
+/* Resultado de la prediccion: tarjeta grande con degradado segun la
+   clase, barra de probabilidad animada (se "llena" al aparecer en vez
+   de mostrarse ya llena, el toque mas cercano a JS que se puede lograr
+   solo con CSS). */
+.resultado-card {
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-top: 1.2rem;
+    text-align: center;
+    animation: aparecer-subiendo 0.4s ease-out;
+}
+
+.resultado-card.ok {
+    background: linear-gradient(135deg, #e7f3ea 0%, #ffffff 100%);
+    border: 1px solid #bfe2c8;
+}
+
+.resultado-card.alerta {
+    background: linear-gradient(135deg, #fbeceb 0%, #ffffff 100%);
+    border: 1px solid #f0c4c1;
+}
+
+.resultado-titulo {
+    font-size: 1.7rem;
+    font-weight: 800;
+}
+
+.resultado-card.ok .resultado-titulo {
+    color: #1e6b3a;
+}
+
+.resultado-card.alerta .resultado-titulo {
+    color: #a23229;
+}
+
+.resultado-barra-fondo {
+    background-color: #e1e0d9;
+    border-radius: 999px;
+    height: 10px;
+    margin: 1rem auto;
+    max-width: 320px;
+    overflow: hidden;
+}
+
+.resultado-barra-relleno {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--color-primario) 0%, var(--color-primario-oscuro) 100%);
+    border-radius: 999px;
+    animation: llenar-barra 0.9s ease-out 0.15s forwards;
+}
+
+@keyframes llenar-barra {
+    from { width: 0%; }
+    /* el ancho final lo fija el atributo style en linea de cada barra;
+       esta regla solo anima desde 0 hasta ese valor */
+    to { width: var(--ancho-final, 0%); }
+}
+
+.resultado-probabilidad {
+    color: var(--color-texto-secundario);
+    font-size: 0.95rem;
+}
+
+/* Botones: el de "Predecir" del formulario y cualquier otro */
+.stButton button, button[kind="formSubmit"], button[kind="primary"] {
+    background-color: var(--color-primario);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1.6rem;
+    font-weight: 600;
+}
+
+.stButton button:hover, button[kind="formSubmit"]:hover, button[kind="primary"]:hover {
+    background-color: var(--color-primario-oscuro);
+    color: white;
+    box-shadow: 0 4px 14px rgba(11, 79, 138, 0.25);
+}
+
+/* Links de navegacion (st.page_link) con aspecto de tarjeta clickeable,
+   que se "levanta" un poco al pasar el mouse */
+a[data-testid="stPageLink"] {
+    border: 1px solid var(--color-borde);
+    border-radius: 10px;
+    padding: 0.75rem 1.1rem;
+    margin-bottom: 0.4rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+a[data-testid="stPageLink"]:hover {
+    background-color: var(--color-fondo-secundario);
+    border-color: var(--color-primario);
+    box-shadow: 0 6px 16px rgba(11, 79, 138, 0.14);
+    transform: translateY(-2px);
+}
+
+/* "En 3 ideas" (Conclusiones finales): 3 tarjetas con numero grande, no
+   una lista numerada plana */
+.idea-grid {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin: 1rem 0 1.5rem 0;
+}
+
+.idea-card {
+    flex: 1 1 220px;
+    background-color: var(--color-fondo-secundario);
+    border: 1px solid var(--color-borde);
+    border-radius: 12px;
+    padding: 1.2rem 1.1rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.idea-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(11, 79, 138, 0.12);
+}
+
+.idea-numero {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--color-primario);
+    line-height: 1;
+    margin-bottom: 0.4rem;
+}
+
+.idea-titulo {
+    font-weight: 700;
+    color: var(--color-texto);
+    margin-bottom: 0.3rem;
+}
+
+.idea-texto {
+    color: var(--color-texto-secundario);
+    font-size: 0.92rem;
+}
+
+/* Responsive: pantallas angostas (celular) */
+@media (max-width: 640px) {
+    .hero-stat-numero {
+        font-size: 3.2rem;
+    }
+
+    .hero-card {
+        padding: 1.5rem 1rem 1.3rem 1rem;
+    }
+
+    .antes-ahora {
+        gap: 0.4rem;
+    }
+
+    .antes-ahora .etiqueta {
+        font-size: 0.78rem;
+        padding: 0.4rem 0.7rem;
+    }
+
+    .resultado-titulo {
+        font-size: 1.4rem;
+    }
+
+    .idea-card {
+        flex: 1 1 100%;
+    }
+
+    .block-container {
+        padding-top: 1.5rem;
+    }
+}
