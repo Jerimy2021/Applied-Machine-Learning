@@ -334,6 +334,72 @@ Detalle completo, código de ambos experimentos y limitaciones (X sin
 `experiencia_puesto_meses`/`sexo`/`area_responsabilidad`, texto libre no
 usado) en `notebooks/04_modelado.ipynb`.
 
+## 10. Conclusiones finales
+
+El objetivo medible del proyecto (sección 2) era clasificar cada evento
+como incapacitante/no incapacitante con **recall ≥ 0.70** sobre la clase
+no incapacitante. El modelo recomendado (Random Forest sobre 2019-2022 +
+2024, `class_weight="balanced"`) lo supera con margen: **recall 0.868 en
+test** (IC 95%: 0.767-0.929), consistente en 10 particiones distintas
+(media 0.852, desviación 0.025).
+
+De los 5 algoritmos comparados, Random Forest ganó no por el mejor score
+en validación cruzada (ahí lideraba SVM, 0.880), sino por ser el único
+estable entre CV y test: SVM se desplomó a 0.258 en test, un caso de
+sobreajuste a los pliegues de validación con pocos datos de la clase
+minoritaria. Esa diferencia entre "qué dice la validación cruzada" y
+"qué pasa en datos nuevos" es, en retrospectiva, el hallazgo
+metodológico más importante del Hito 2.
+
+SMOTENC (sobremuestreo sintético) se evaluó como alternativa para el
+desbalance de clases y se descartó con evidencia cuantitativa: empeora
+el recall de forma monótona cuanto más balanceo sintético se agrega,
+porque suaviza la frontera de decisión justo en la dirección contraria a
+la que pide el objetivo del proyecto.
+
+**Qué sigue abierto, a propósito:** agrupar `lugar`, `fuente_peligro` y
+`puesto_trabajo` (cientos de categorías, muchas con un solo caso) queda
+diferido al Hito 3 como trabajo de *feature engineering*, no es un
+pendiente de limpieza de este modelo (ver wiki,
+[Pendientes y próximos pasos](https://github.com/Jerimy2021/Applied-Machine-Learning/wiki/Pendientes-y-pr%C3%B3ximos-pasos)).
+La app de Hito 3 (`app/`, ver sección 11) despliega el modelo del Hito 2
+**sin cambios**: el agrupamiento de categorías no es parte de esa
+entrega.
+
+**Limitaciones:** `experiencia_puesto_meses`, `sexo`,
+`area_responsabilidad` y `anio` quedan fuera de X (su disponibilidad
+depende de la clase objetivo en el período de entrenamiento, ver sección
+5). El texto libre (`descripcion_accidente`) tampoco se usa todavía.
+
+## 11. App del Hito 3 (dashboard + predicción)
+
+App de `streamlit` en `app/`, con 2 páginas:
+
+- **Resultados del modelo**: el contenido de la sección 9 reorganizado
+  en pestañas (comparación de algoritmos, hiperparámetros, SMOTENC,
+  extensión 2024, conclusiones finales), reusando las figuras de
+  `reports/figures/` tal cual.
+- **Hacer una predicción**: un formulario con las 8 columnas de X
+  (`src.prepare.COLUMNAS_X`) que llama al pipeline final ya entrenado
+  (`models/modelo_es_incapacitante.joblib`, exportado desde
+  `notebooks/04_modelado.ipynb`). Las opciones de cada desplegable salen
+  de `models/categorias_x.json` (los valores que el modelo vio en
+  train), para no poder mandarle al encoder una categoría que no conoce.
+
+La app no reentrena ni depende de `data/processed/`: solo necesita
+`joblib`+`pandas`+`scikit-learn`+`streamlit` (ver `app/requirements.txt`,
+con versiones fijas exactas porque scikit-learn no garantiza
+compatibilidad de pickle entre versiones).
+
+**Correr localmente:**
+```bash
+pip install -r app/requirements.txt
+streamlit run app/Inicio.py
+```
+
+**Desplegado:** público, sin login, en una instancia de AWS Lightsail
+(ver `deploy/README.md`). URL: _pendiente del primer despliegue_.
+
 ## Estructura de carpetas
 
 ```
@@ -343,18 +409,30 @@ usado) en `notebooks/04_modelado.ipynb`.
 │   ├── interim/       # Data intermedia (pasos de limpieza en curso).
 │   └── processed/     # Data final, lista para EDA/modelado.
 ├── notebooks/
-│   ├── 00_inventario_fuentes.ipynb   # Inventario y primer vistazo a las fuentes crudas.
-│   ├── 01_eda_accidentes.ipynb       # Análisis exploratorio de datos (2023-2024).
-│   ├── 02_eda_dirigido.ipynb         # EDA dirigido a la variable objetivo.
-│   └── 03_estadistica_descriptiva.ipynb  # Estadística descriptiva y valores faltantes (histórico).
+│   ├── 00_inventario_fuentes.ipynb       # Inventario y primer vistazo a las fuentes crudas.
+│   ├── 01_eda_accidentes.ipynb           # Análisis exploratorio de datos (2023-2024).
+│   ├── 02_eda_dirigido.ipynb             # EDA dirigido a la variable objetivo.
+│   ├── 03_estadistica_descriptiva.ipynb  # Estadística descriptiva y valores faltantes (histórico).
+│   └── 04_modelado.ipynb                 # Comparación de algoritmos, experimentación, modelo final.
 ├── src/
 │   ├── config.py      # Rutas del proyecto y constantes (sin hardcodear rutas absolutas).
 │   ├── schema.py       # Definición del esquema de columnas (nombres, tipos, categorías).
 │   ├── ingest.py        # Carga de los archivos crudos (.xlsx) a DataFrames.
-│   └── clean.py         # Funciones de limpieza y normalización reutilizables.
+│   ├── clean.py         # Funciones de limpieza y normalización reutilizables.
+│   ├── prepare.py        # Población de modelado, X final, recodificación.
+│   └── model.py           # Pipeline, modelos, experimentación, exportación.
+├── models/
+│   ├── modelo_es_incapacitante.joblib  # Pipeline final ya entrenado (ver sección 11).
+│   └── categorias_x.json               # Categorías de X vistas en train, para la app.
+├── app/
+│   ├── Inicio.py          # App de streamlit (Hito 3): landing page.
+│   ├── common.py          # Carga cacheada del pipeline y las categorías.
+│   └── pages/             # Dashboard de resultados + formulario de predicción.
+├── deploy/                # Scripts y guía para desplegar la app (ver sección 11).
 ├── reports/
-│   ├── figures/                # Gráficos exportados del EDA.
-│   └── diccionario_datos.md    # Diccionario de datos y bitácora de decisiones de limpieza.
+│   ├── figures/                           # Gráficos exportados del EDA y del modelado.
+│   ├── diccionario_datos.md               # Diccionario de datos y bitácora de decisiones.
+│   └── estrategia_data_preparation.md     # Estrategia de preparación de datos para el modelo.
 ├── .github/
 │   └── pull_request_template.md
 ├── pyproject.toml
