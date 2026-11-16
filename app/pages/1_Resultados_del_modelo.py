@@ -19,7 +19,7 @@ import streamlit as st
 # agrega a mano para no depender de ese detalle de implementación.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from common import DISCLAIMER, FIGURES_DIR, aplicar_estilos  # noqa: E402
+from common import FIGURES_DIR, aplicar_estilos  # noqa: E402
 
 st.set_page_config(page_title="Resultados del modelo", layout="wide")
 aplicar_estilos()
@@ -233,23 +233,13 @@ with tab_conclusiones:
 """
     )
 
-    st.markdown("#### Qué sigue abierto, a propósito")
+    st.markdown("#### Alcance de este proyecto")
     st.markdown(
         """
-- Agrupar `lugar`, `fuente_peligro` y `puesto_trabajo` (tienen cientos
-  de categorías) queda para el Hito 3.
-- Esta app usa el modelo del Hito 2 tal cual, sin ese agrupamiento
-  todavía.
-"""
-    )
-
-    st.markdown("#### Limitaciones")
-    st.markdown(
-        """
+- `lugar`, `fuente_peligro` y `puesto_trabajo` no se agruparon (tienen
+  cientos de categorías cada una); el modelo las usa tal cual.
 - `experiencia_puesto_meses`, `sexo`, `area_responsabilidad` y `anio`
   quedan fuera del modelo.
-- El texto libre de la descripción del accidente tampoco se usa
-  todavía.
+- El texto libre de la descripción del accidente tampoco se usa.
 """
     )
-    st.warning(DISCLAIMER)

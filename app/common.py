@@ -21,11 +21,6 @@ FIGURES_DIR = ROOT_DIR / "reports" / "figures"
 RECALL_TEST = 0.868
 RECALL_IC95 = (0.767, 0.929)
 
-DISCLAIMER = (
-    "Esta predicción es una ayuda para decidir, no un resultado "
-    "definitivo: no reemplaza la revisión humana de SST sobre cada caso."
-)
-
 
 def aplicar_estilos() -> None:
     """

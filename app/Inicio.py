@@ -5,7 +5,7 @@ la página de predicción, no solo acá).
 """
 
 import streamlit as st
-from common import DISCLAIMER, RECALL_IC95, RECALL_TEST, aplicar_estilos
+from common import RECALL_IC95, RECALL_TEST, aplicar_estilos
 
 st.set_page_config(page_title="SST: predicción de accidentes", layout="centered")
 aplicar_estilos()
@@ -23,8 +23,8 @@ st.markdown(
         <div class="hero-stat">
             <div class="hero-stat-numero">{RECALL_TEST:.1%}</div>
             <div class="hero-stat-etiqueta">
-                de los accidentes <strong>no incapacitantes</strong> se identifican
-                correctamente (recall en test)
+                de los accidentes leves se detectan correctamente,
+                validado con datos reales de prueba
             </div>
         </div>
         <div class="antes-ahora">
@@ -51,8 +51,6 @@ col3.metric(
     "828 filas",
     help="Histórico 2019-2022 + 2024, confirmado por SST",
 )
-
-st.warning(DISCLAIMER)
 
 st.markdown("### ¿Qué quieres ver?")
 col_dashboard, col_prediccion = st.columns(2)

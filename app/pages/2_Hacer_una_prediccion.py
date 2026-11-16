@@ -19,7 +19,7 @@ import streamlit as st
 # agrega a mano para no depender de ese detalle de implementación.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from common import DISCLAIMER, aplicar_estilos, cargar_categorias, cargar_pipeline  # noqa: E402
+from common import aplicar_estilos, cargar_categorias, cargar_pipeline  # noqa: E402
 
 st.set_page_config(page_title="Hacer una predicción", layout="centered")
 aplicar_estilos()
@@ -29,7 +29,6 @@ st.caption(
     "Completa los datos de un evento para ver qué predice el modelo "
     "recomendado del Hito 2 (Random Forest, 2019-2022 + 2024)."
 )
-st.warning(DISCLAIMER)
 
 categorias = cargar_categorias()
 pipeline = cargar_pipeline()
@@ -81,12 +80,22 @@ if enviado:
     indice_true = list(pipeline.classes_).index(True)
     probabilidad_incapacitante = probabilidades[indice_true]
 
-    st.divider()
-    if prediccion:
-        st.error(f"Predicción: **incapacitante** (probabilidad {probabilidad_incapacitante:.1%})")
-    else:
-        st.success(
-            f"Predicción: **no incapacitante** (probabilidad de incapacitante: "
-            f"{probabilidad_incapacitante:.1%})"
-        )
-    st.caption(DISCLAIMER)
+    clase_css = "alerta" if prediccion else "ok"
+    etiqueta = "Incapacitante" if prediccion else "No incapacitante"
+    porcentaje = f"{probabilidad_incapacitante:.1%}"
+    estilo_barra = f"--ancho-final: {porcentaje};"
+
+    st.markdown(
+        f"""
+        <div class="resultado-card {clase_css}">
+            <div class="resultado-titulo">{etiqueta}</div>
+            <div class="resultado-barra-fondo">
+                <div class="resultado-barra-relleno" style="{estilo_barra}"></div>
+            </div>
+            <div class="resultado-probabilidad">
+                {porcentaje} de probabilidad de ser incapacitante
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )

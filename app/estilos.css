@@ -149,6 +149,79 @@ div[data-testid="stAlert"] {
     border-left: 5px solid currentColor;
 }
 
+/* Formulario de prediccion: tarjeta propia, no el fondo blanco plano
+   por defecto */
+div[data-testid="stForm"] {
+    background-color: var(--color-fondo-secundario);
+    border: 1px solid var(--color-borde);
+    border-radius: 14px;
+    padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+}
+
+/* Resultado de la prediccion: tarjeta grande con degradado segun la
+   clase, barra de probabilidad animada (se "llena" al aparecer en vez
+   de mostrarse ya llena, el toque mas cercano a JS que se puede lograr
+   solo con CSS). */
+.resultado-card {
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-top: 1.2rem;
+    text-align: center;
+    animation: aparecer-subiendo 0.4s ease-out;
+}
+
+.resultado-card.ok {
+    background: linear-gradient(135deg, #e7f3ea 0%, #ffffff 100%);
+    border: 1px solid #bfe2c8;
+}
+
+.resultado-card.alerta {
+    background: linear-gradient(135deg, #fbeceb 0%, #ffffff 100%);
+    border: 1px solid #f0c4c1;
+}
+
+.resultado-titulo {
+    font-size: 1.7rem;
+    font-weight: 800;
+}
+
+.resultado-card.ok .resultado-titulo {
+    color: #1e6b3a;
+}
+
+.resultado-card.alerta .resultado-titulo {
+    color: #a23229;
+}
+
+.resultado-barra-fondo {
+    background-color: #e1e0d9;
+    border-radius: 999px;
+    height: 10px;
+    margin: 1rem auto;
+    max-width: 320px;
+    overflow: hidden;
+}
+
+.resultado-barra-relleno {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--color-primario) 0%, var(--color-primario-oscuro) 100%);
+    border-radius: 999px;
+    animation: llenar-barra 0.9s ease-out 0.15s forwards;
+}
+
+@keyframes llenar-barra {
+    from { width: 0%; }
+    /* el ancho final lo fija el atributo style en linea de cada barra;
+       esta regla solo anima desde 0 hasta ese valor */
+    to { width: var(--ancho-final, 0%); }
+}
+
+.resultado-probabilidad {
+    color: var(--color-texto-secundario);
+    font-size: 0.95rem;
+}
+
 /* Botones: el de "Predecir" del formulario y cualquier otro */
 .stButton button, button[kind="formSubmit"], button[kind="primary"] {
     background-color: var(--color-primario);
